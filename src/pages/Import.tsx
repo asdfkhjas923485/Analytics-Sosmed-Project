@@ -462,20 +462,14 @@ const Import = () => {
                     <TableRow key={dataset.id}>
                       <TableCell className="font-medium">{dataset.name}</TableCell>
                       <TableCell>
-                        {format(new Date(dataset.created_at), "dd MMM yyyy")}
+                        {new Date(dataset.created_at).toLocaleDateString("id-ID")}
                       </TableCell>
                       <TableCell>{dataset.row_count}</TableCell>
                       <TableCell>
                         {dataset.is_active ? (
-                          <Badge className="bg-success text-success-foreground">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Aktif
-                          </Badge>
+                          <Badge className="bg-success">Aktif</Badge>
                         ) : (
-                          <Badge variant="outline">
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Tidak Aktif
-                          </Badge>
+                          <Badge variant="outline">Tidak Aktif</Badge>
                         )}
                       </TableCell>
                       <TableCell>
