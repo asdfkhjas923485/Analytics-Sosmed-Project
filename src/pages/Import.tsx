@@ -9,9 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Link as LinkIcon, Database, FileSpreadsheet } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Upload, Link as LinkIcon, Database, FileSpreadsheet, Download, Eye, Trash2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Import = () => {
   const navigate = useNavigate();
@@ -20,12 +23,118 @@ const Import = () => {
   const [uploading, setUploading] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [sheetsUrl, setSheetsUrl] = useState("");
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [datasetToDelete, setDatasetToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
     }
   }, [user, authLoading, navigate]);
+
+  // Parse CSV with flexible column matching
+  const parseCSV = (text: string) => {
+    const lines = text.split("\n").filter((line) => line.trim());
+    if (lines.length === 0) throw new Error("File CSV kosong");
+    
+    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+    
+    // Map common column name variations
+    const columnMap: Record<string, string[]> = {
+      platform: ["platform", "social_media", "media"],
+      content_type: ["content_type", "type", "content", "tipe"],
+      post_id: ["post_id", "id", "postid"],
+      posted_at: ["posted_at", "date", "tanggal", "timestamp"],
+      reach: ["reach", "jangkauan", "impressions"],
+      likes: ["likes", "like", "suka"],
+      comments: ["comments", "comment", "komentar"],
+      shares: ["shares", "share", "bagikan"],
+      saved: ["saved", "save", "simpan", "bookmark"],
+      views: ["views", "view", "tayangan"],
+      followers: ["followers", "follower", "pengikut"],
+      caption: ["caption", "text", "keterangan"]
+    };
+
+    const getColumnIndex = (columnKey: string): number => {
+      const variations = columnMap[columnKey];
+      for (const variation of variations) {
+        const index = headers.indexOf(variation);
+        if (index !== -1) return index;
+      }
+      return -1;
+    };
+
+    const requiredColumns = ["platform", "content_type", "post_id", "posted_at", "reach", "likes", "comments", "shares", "saved", "views", "followers"];
+    const missing = requiredColumns.filter(col => getColumnIndex(col) === -1);
+    
+    if (missing.length > 0) {
+      throw new Error(`Kolom yang hilang: ${missing.join(", ")}. Silakan download template untuk format yang benar.`);
+    }
+
+    return { lines, headers, getColumnIndex };
+  };
+
+  // Preview CSV before upload
+  const handlePreviewCSV = async () => {
+    if (!csvFile) return;
+
+    try {
+      const text = await csvFile.text();
+      const { lines, getColumnIndex } = parseCSV(text);
+      
+      const { data: platforms } = await supabase.from("platforms").select("*");
+      const { data: contentTypes } = await supabase.from("content_types").select("*");
+
+      const preview = {
+        fileName: csvFile.name,
+        totalRows: lines.length - 1,
+        headers: lines[0],
+        sampleRows: lines.slice(1, 4).map(line => line.split(",")),
+        validationResults: {
+          validRows: 0,
+          invalidRows: 0,
+          errors: [] as string[]
+        }
+      };
+
+      // Validate sample data
+      let validCount = 0;
+      let invalidCount = 0;
+      const errors: string[] = [];
+
+      for (let i = 1; i < Math.min(lines.length, 20); i++) {
+        const values = lines[i].split(",");
+        const platformName = values[getColumnIndex("platform")]?.trim().toLowerCase();
+        const contentTypeName = values[getColumnIndex("content_type")]?.trim().toLowerCase();
+        
+        const platform = platforms?.find((p) => p.name.toLowerCase() === platformName);
+        const contentType = contentTypes?.find((c) => c.name.toLowerCase() === contentTypeName);
+
+        if (!platform) {
+          errors.push(`Baris ${i}: Platform "${platformName}" tidak ditemukan`);
+          invalidCount++;
+        } else if (!contentType) {
+          errors.push(`Baris ${i}: Content type "${contentTypeName}" tidak ditemukan`);
+          invalidCount++;
+        } else {
+          validCount++;
+        }
+      }
+
+      preview.validationResults = {
+        validRows: validCount,
+        invalidRows: invalidCount,
+        errors: errors.slice(0, 5)
+      };
+
+      setPreviewData(preview);
+      setShowPreview(true);
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
 
   // CSV Upload Handler
   const handleCsvUpload = async () => {
@@ -37,12 +146,7 @@ const Import = () => {
     setUploading(true);
     try {
       const text = await csvFile.text();
-      const lines = text.split("\n").filter((line) => line.trim());
-      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
-
-      const required = ["platform", "content_type", "post_id", "posted_at", "reach", "likes", "comments", "shares", "saved", "views", "followers"];
-      const missing = required.filter((col) => !headers.includes(col));
-      if (missing.length > 0) throw new Error(`Kolom yang hilang: ${missing.join(", ")}`);
+      const { lines, getColumnIndex } = parseCSV(text);
 
       const { data: dataset, error: datasetError } = await supabase
         .from("datasets")
@@ -61,20 +165,32 @@ const Import = () => {
       const { data: contentTypes } = await supabase.from("content_types").select("*");
 
       const posts = [];
+      const errors = [];
+      
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(",");
-        if (values.length < headers.length) continue;
+        
+        const platformName = values[getColumnIndex("platform")]?.trim().toLowerCase();
+        const contentTypeName = values[getColumnIndex("content_type")]?.trim().toLowerCase();
+        
+        const platform = platforms?.find((p) => p.name.toLowerCase() === platformName);
+        const contentType = contentTypes?.find((c) => c.name.toLowerCase() === contentTypeName);
 
-        const platform = platforms?.find((p) => p.name.toLowerCase() === values[headers.indexOf("platform")]?.trim().toLowerCase());
-        const contentType = contentTypes?.find((c) => c.name.toLowerCase() === values[headers.indexOf("content_type")]?.trim().toLowerCase());
+        if (!platform) {
+          errors.push(`Baris ${i}: Platform "${platformName}" tidak ditemukan`);
+          continue;
+        }
+        
+        if (!contentType) {
+          errors.push(`Baris ${i}: Content type "${contentTypeName}" tidak ditemukan`);
+          continue;
+        }
 
-        if (!platform || !contentType) continue;
-
-        const reach = parseInt(values[headers.indexOf("reach")]) || 0;
-        const likes = parseInt(values[headers.indexOf("likes")]) || 0;
-        const comments = parseInt(values[headers.indexOf("comments")]) || 0;
-        const shares = parseInt(values[headers.indexOf("shares")]) || 0;
-        const saved = parseInt(values[headers.indexOf("saved")]) || 0;
+        const reach = parseInt(values[getColumnIndex("reach")]) || 0;
+        const likes = parseInt(values[getColumnIndex("likes")]) || 0;
+        const comments = parseInt(values[getColumnIndex("comments")]) || 0;
+        const shares = parseInt(values[getColumnIndex("shares")]) || 0;
+        const saved = parseInt(values[getColumnIndex("saved")]) || 0;
         const engagement = likes + comments + shares + saved;
 
         posts.push({
@@ -82,22 +198,37 @@ const Import = () => {
           dataset_id: dataset.id,
           platform_id: platform.id,
           content_type_id: contentType.id,
-          post_id: values[headers.indexOf("post_id")]?.trim() || `POST-${i}`,
-          posted_at: new Date(values[headers.indexOf("posted_at")]?.trim()).toISOString(),
+          post_id: values[getColumnIndex("post_id")]?.trim() || `POST-${i}`,
+          posted_at: new Date(values[getColumnIndex("posted_at")]?.trim()).toISOString(),
           reach, likes, comments, shares, saved,
-          views: parseInt(values[headers.indexOf("views")]) || 0,
-          followers: parseInt(values[headers.indexOf("followers")]) || 0,
+          views: parseInt(values[getColumnIndex("views")]) || 0,
+          followers: parseInt(values[getColumnIndex("followers")]) || 0,
           engagement,
           engagement_rate: reach > 0 ? parseFloat(((engagement / reach) * 100).toFixed(2)) : 0,
-          caption: values[headers.indexOf("caption")]?.trim() || "",
+          caption: values[getColumnIndex("caption")]?.trim() || "",
         });
       }
 
+      if (posts.length === 0) {
+        throw new Error("Tidak ada data valid yang bisa diimport. Periksa format CSV Anda.");
+      }
+
       await supabase.from("posts").insert(posts);
-      await supabase.from("imports_log").insert({ dataset_id: dataset.id, status: "success", message: `Imported ${posts.length} posts` });
-      toast.success(`Berhasil import ${posts.length} posts!`);
+      await supabase.from("imports_log").insert({ 
+        dataset_id: dataset.id, 
+        status: "success", 
+        message: `Imported ${posts.length} posts`,
+        invalid_rows_count: errors.length
+      });
+      
+      toast.success(`Berhasil import ${posts.length} posts!${errors.length > 0 ? ` (${errors.length} baris dilewati)` : ""}`);
+      if (errors.length > 0 && errors.length <= 5) {
+        errors.forEach(err => toast.warning(err));
+      }
+      
       await refreshDatasets();
       setCsvFile(null);
+      setShowPreview(false);
     } catch (error: any) {
       toast.error(`Error: ${error.message}`);
     } finally {
@@ -320,23 +451,109 @@ const Import = () => {
     if (!selectedProject) return;
 
     try {
-      // Deactivate all datasets
-      await supabase
-        .from("datasets")
-        .update({ is_active: false })
-        .eq("project_id", selectedProject.id);
-
-      // Activate selected dataset
-      await supabase
-        .from("datasets")
-        .update({ is_active: true })
-        .eq("id", datasetId);
-
+      await supabase.from("datasets").update({ is_active: false }).eq("project_id", selectedProject.id);
+      await supabase.from("datasets").update({ is_active: true }).eq("id", datasetId);
       toast.success("Dataset aktif berhasil diubah");
       await refreshDatasets();
     } catch (error: any) {
-      console.error("Error setting active dataset:", error);
       toast.error("Gagal mengubah dataset aktif");
+    }
+  };
+
+  const handleDeleteDataset = async () => {
+    if (!datasetToDelete || !selectedProject) return;
+
+    try {
+      setUploading(true);
+      
+      // Delete related posts first
+      await supabase.from("posts").delete().eq("dataset_id", datasetToDelete);
+      
+      // Delete import logs
+      await supabase.from("imports_log").delete().eq("dataset_id", datasetToDelete);
+      
+      // Delete dataset
+      await supabase.from("datasets").delete().eq("id", datasetToDelete);
+      
+      toast.success("Dataset berhasil dihapus");
+      await refreshDatasets();
+      setShowDeleteDialog(false);
+      setDatasetToDelete(null);
+    } catch (error: any) {
+      toast.error("Gagal menghapus dataset");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const template = `platform,content_type,post_id,posted_at,reach,likes,comments,shares,saved,views,followers,caption
+instagram,reel,POST001,2025-01-15 10:30:00,5000,250,30,15,20,5500,1200,Contoh caption post
+tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh caption lainnya`;
+
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'template_import.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    toast.success("Template CSV berhasil didownload");
+  };
+
+  const handleExportDataset = async (datasetId: string, datasetName: string) => {
+    try {
+      setUploading(true);
+      
+      const { data: posts, error } = await supabase
+        .from("posts")
+        .select(`
+          *,
+          platforms:platform_id(name),
+          content_types:content_type_id(name)
+        `)
+        .eq("dataset_id", datasetId);
+
+      if (error) throw error;
+      if (!posts || posts.length === 0) {
+        toast.error("Dataset kosong, tidak ada data untuk diekspor");
+        return;
+      }
+
+      const headers = ["platform", "content_type", "post_id", "posted_at", "reach", "likes", "comments", "shares", "saved", "views", "followers", "caption"];
+      const rows = posts.map((post: any) => [
+        post.platforms?.name || "",
+        post.content_types?.name || "",
+        post.post_id,
+        post.posted_at,
+        post.reach,
+        post.likes,
+        post.comments,
+        post.shares,
+        post.saved,
+        post.views,
+        post.followers,
+        post.caption || ""
+      ]);
+
+      const csv = [headers.join(","), ...rows.map(row => row.join(","))].join("\n");
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${datasetName.replace(/\s/g, '_')}_export.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Dataset berhasil diekspor");
+    } catch (error: any) {
+      toast.error("Gagal mengekspor dataset");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -370,6 +587,25 @@ const Import = () => {
             Kelola dataset CSV untuk project <strong>{selectedProject.name}</strong>
           </p>
         </div>
+
+        {/* Download Template */}
+        <Alert className="bg-muted/30 border-primary/20">
+          <AlertCircle className="h-4 w-4 text-primary" />
+          <AlertDescription className="flex items-center justify-between">
+            <span className="text-sm">
+              Belum tahu format CSV yang benar? Download template kami
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadTemplate}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download Template
+            </Button>
+          </AlertDescription>
+        </Alert>
 
         {/* Import Options */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -407,13 +643,24 @@ const Import = () => {
                 </Label>
               </div>
               {csvFile && (
-                <Button 
-                  className="w-full" 
-                  onClick={handleCsvUpload}
-                  disabled={uploading}
-                >
-                  {uploading ? "Mengupload..." : "Upload CSV"}
-                </Button>
+                <div className="space-y-2">
+                  <Button 
+                    variant="outline"
+                    className="w-full gap-2" 
+                    onClick={handlePreviewCSV}
+                    disabled={uploading}
+                  >
+                    <Eye className="h-4 w-4" />
+                    Preview Data
+                  </Button>
+                  <Button 
+                    className="w-full" 
+                    onClick={handleCsvUpload}
+                    disabled={uploading}
+                  >
+                    {uploading ? "Mengupload..." : "Upload CSV"}
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -509,15 +756,40 @@ const Import = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        {!dataset.is_active && (
+                        <div className="flex gap-2">
+                          {!dataset.is_active && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleSetActive(dataset.id)}
+                            >
+                              Set Aktif
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleSetActive(dataset.id)}
+                            onClick={() => handleExportDataset(dataset.id, dataset.name)}
+                            disabled={uploading}
+                            className="gap-1"
                           >
-                            Set sebagai Aktif
+                            <Download className="h-3 w-3" />
+                            Export
                           </Button>
-                        )}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              setDatasetToDelete(dataset.id);
+                              setShowDeleteDialog(true);
+                            }}
+                            disabled={uploading}
+                            className="gap-1"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Hapus
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -526,6 +798,111 @@ const Import = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Preview Dialog */}
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Preview CSV Import</DialogTitle>
+              <DialogDescription>
+                Periksa data sebelum mengupload
+              </DialogDescription>
+            </DialogHeader>
+            
+            {previewData && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">File</p>
+                    <p className="font-medium">{previewData.fileName}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Baris</p>
+                    <p className="font-medium">{previewData.totalRows}</p>
+                  </div>
+                </div>
+
+                {previewData.validationResults.invalidRows > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <p className="font-medium">Ditemukan {previewData.validationResults.invalidRows} baris bermasalah:</p>
+                      <ul className="list-disc list-inside mt-2 text-sm">
+                        {previewData.validationResults.errors.map((err: string, idx: number) => (
+                          <li key={idx}>{err}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div>
+                  <p className="text-sm font-medium mb-2">Sample Data (3 baris pertama)</p>
+                  <ScrollArea className="h-64 border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          {previewData.headers.split(",").map((header: string, idx: number) => (
+                            <TableHead key={idx}>{header}</TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {previewData.sampleRows.map((row: string[], idx: number) => (
+                          <TableRow key={idx}>
+                            {row.map((cell: string, cellIdx: number) => (
+                              <TableCell key={cellIdx}>{cell}</TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowPreview(false)}>
+                Batal
+              </Button>
+              <Button onClick={handleCsvUpload} disabled={uploading}>
+                {uploading ? "Mengupload..." : "Lanjutkan Upload"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Konfirmasi Hapus Dataset</DialogTitle>
+              <DialogDescription>
+                Apakah Anda yakin ingin menghapus dataset ini? Semua data post terkait juga akan dihapus. Aksi ini tidak dapat dibatalkan.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  setDatasetToDelete(null);
+                }}
+                disabled={uploading}
+              >
+                Batal
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteDataset}
+                disabled={uploading}
+              >
+                {uploading ? "Menghapus..." : "Hapus Dataset"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
