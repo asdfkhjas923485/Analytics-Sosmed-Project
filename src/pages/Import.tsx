@@ -9,22 +9,183 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, Link as LinkIcon, Database, CheckCircle, XCircle } from "lucide-react";
+import { Upload, Link as LinkIcon, Database, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format } from "date-fns";
 
 const Import = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { selectedProject, datasets, refreshDatasets } = useApp();
   const [uploading, setUploading] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [sheetsUrl, setSheetsUrl] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
     }
   }, [user, authLoading, navigate]);
+
+  // CSV Upload Handler
+  const handleCsvUpload = async () => {
+    if (!csvFile || !selectedProject) {
+      toast.error("Pilih file CSV terlebih dahulu");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const text = await csvFile.text();
+      const lines = text.split("\n").filter((line) => line.trim());
+      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+
+      const required = ["platform", "content_type", "post_id", "posted_at", "reach", "likes", "comments", "shares", "saved", "views", "followers"];
+      const missing = required.filter((col) => !headers.includes(col));
+      if (missing.length > 0) throw new Error(`Kolom yang hilang: ${missing.join(", ")}`);
+
+      const { data: dataset, error: datasetError } = await supabase
+        .from("datasets")
+        .insert({
+          project_id: selectedProject.id,
+          name: csvFile.name,
+          source_type: "upload_csv",
+          row_count: lines.length - 1,
+        })
+        .select()
+        .single();
+
+      if (datasetError) throw datasetError;
+
+      const { data: platforms } = await supabase.from("platforms").select("*");
+      const { data: contentTypes } = await supabase.from("content_types").select("*");
+
+      const posts = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(",");
+        if (values.length < headers.length) continue;
+
+        const platform = platforms?.find((p) => p.name.toLowerCase() === values[headers.indexOf("platform")]?.trim().toLowerCase());
+        const contentType = contentTypes?.find((c) => c.name.toLowerCase() === values[headers.indexOf("content_type")]?.trim().toLowerCase());
+
+        if (!platform || !contentType) continue;
+
+        const reach = parseInt(values[headers.indexOf("reach")]) || 0;
+        const likes = parseInt(values[headers.indexOf("likes")]) || 0;
+        const comments = parseInt(values[headers.indexOf("comments")]) || 0;
+        const shares = parseInt(values[headers.indexOf("shares")]) || 0;
+        const saved = parseInt(values[headers.indexOf("saved")]) || 0;
+        const engagement = likes + comments + shares + saved;
+
+        posts.push({
+          project_id: selectedProject.id,
+          dataset_id: dataset.id,
+          platform_id: platform.id,
+          content_type_id: contentType.id,
+          post_id: values[headers.indexOf("post_id")]?.trim() || `POST-${i}`,
+          posted_at: new Date(values[headers.indexOf("posted_at")]?.trim()).toISOString(),
+          reach, likes, comments, shares, saved,
+          views: parseInt(values[headers.indexOf("views")]) || 0,
+          followers: parseInt(values[headers.indexOf("followers")]) || 0,
+          engagement,
+          engagement_rate: reach > 0 ? parseFloat(((engagement / reach) * 100).toFixed(2)) : 0,
+          caption: values[headers.indexOf("caption")]?.trim() || "",
+        });
+      }
+
+      await supabase.from("posts").insert(posts);
+      await supabase.from("imports_log").insert({ dataset_id: dataset.id, status: "success", message: `Imported ${posts.length} posts` });
+      toast.success(`Berhasil import ${posts.length} posts!`);
+      await refreshDatasets();
+      setCsvFile(null);
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Google Sheets Import
+  const handleSheetsImport = async () => {
+    if (!sheetsUrl || !selectedProject) {
+      toast.error("Masukkan URL Google Sheets");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const match = sheetsUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (!match) throw new Error("URL tidak valid");
+
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv`;
+      const response = await fetch(csvUrl);
+      if (!response.ok) throw new Error("Gagal mengambil data. Pastikan sheet publik");
+
+      const text = await response.text();
+      const lines = text.split("\n").filter((line) => line.trim());
+      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+
+      const required = ["platform", "content_type", "post_id", "posted_at", "reach", "likes", "comments", "shares", "saved", "views", "followers"];
+      const missing = required.filter((col) => !headers.includes(col));
+      if (missing.length > 0) throw new Error(`Kolom yang hilang: ${missing.join(", ")}`);
+
+      const { data: dataset } = await supabase
+        .from("datasets")
+        .insert({
+          project_id: selectedProject.id,
+          name: `Google Sheets - ${new Date().toLocaleDateString()}`,
+          source_type: "google_sheet",
+          storage_path: sheetsUrl,
+          row_count: lines.length - 1,
+        })
+        .select()
+        .single();
+
+      const { data: platforms } = await supabase.from("platforms").select("*");
+      const { data: contentTypes } = await supabase.from("content_types").select("*");
+
+      const posts = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(",");
+        if (values.length < headers.length) continue;
+
+        const platform = platforms?.find((p) => p.name.toLowerCase() === values[headers.indexOf("platform")]?.trim().toLowerCase());
+        const contentType = contentTypes?.find((c) => c.name.toLowerCase() === values[headers.indexOf("content_type")]?.trim().toLowerCase());
+        if (!platform || !contentType) continue;
+
+        const reach = parseInt(values[headers.indexOf("reach")]) || 0;
+        const likes = parseInt(values[headers.indexOf("likes")]) || 0;
+        const comments = parseInt(values[headers.indexOf("comments")]) || 0;
+        const shares = parseInt(values[headers.indexOf("shares")]) || 0;
+        const saved = parseInt(values[headers.indexOf("saved")]) || 0;
+        const engagement = likes + comments + shares + saved;
+
+        posts.push({
+          project_id: selectedProject.id,
+          dataset_id: dataset!.id,
+          platform_id: platform.id,
+          content_type_id: contentType.id,
+          post_id: values[headers.indexOf("post_id")]?.trim() || `POST-${i}`,
+          posted_at: new Date(values[headers.indexOf("posted_at")]?.trim()).toISOString(),
+          reach, likes, comments, shares, saved,
+          views: parseInt(values[headers.indexOf("views")]) || 0,
+          followers: parseInt(values[headers.indexOf("followers")]) || 0,
+          engagement,
+          engagement_rate: reach > 0 ? parseFloat(((engagement / reach) * 100).toFixed(2)) : 0,
+          caption: values[headers.indexOf("caption")]?.trim() || "",
+        });
+      }
+
+      await supabase.from("posts").insert(posts);
+      toast.success(`Berhasil import ${posts.length} posts!`);
+      await refreshDatasets();
+      setSheetsUrl("");
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleUseSampleData = async () => {
     if (!selectedProject) {
