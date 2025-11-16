@@ -2,8 +2,19 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import { AppProvider } from "./contexts/AppContext";
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
+import Import from "./pages/Import";
+import Performa from "./pages/Performa";
+import WaktuTerbaik from "./pages/WaktuTerbaik";
+import Audiens from "./pages/Audiens";
+import Laporan from "./pages/Laporan";
+import Platform from "./pages/Platform";
+import Perbandingan from "./pages/Perbandingan";
+import ProjectNew from "./pages/ProjectNew";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -14,11 +25,24 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <AppProvider>
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/import" element={<Import />} />
+              <Route path="/performa" element={<Performa />} />
+              <Route path="/waktu-terbaik" element={<WaktuTerbaik />} />
+              <Route path="/audiens" element={<Audiens />} />
+              <Route path="/laporan" element={<Laporan />} />
+              <Route path="/platform" element={<Platform />} />
+              <Route path="/perbandingan" element={<Perbandingan />} />
+              <Route path="/projects/new" element={<ProjectNew />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AppProvider>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
