@@ -381,15 +381,40 @@ const Import = () => {
               </CardTitle>
               <CardDescription>Drag & drop atau pilih file CSV</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                <Input type="file" accept=".csv" className="hidden" id="csv-upload" />
+                <Input 
+                  type="file" 
+                  accept=".csv" 
+                  className="hidden" 
+                  id="csv-upload"
+                  onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                />
                 <Label htmlFor="csv-upload" className="cursor-pointer">
-                  <p className="text-sm text-muted-foreground">
-                    Feature coming soon
-                  </p>
+                  {csvFile ? (
+                    <div className="space-y-2">
+                      <FileSpreadsheet className="h-8 w-8 mx-auto text-primary" />
+                      <p className="text-sm font-medium text-foreground">{csvFile.name}</p>
+                      <p className="text-xs text-muted-foreground">Klik untuk ganti file</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                      <p className="text-sm text-foreground">Pilih file CSV</p>
+                      <p className="text-xs text-muted-foreground">atau drag & drop di sini</p>
+                    </div>
+                  )}
                 </Label>
               </div>
+              {csvFile && (
+                <Button 
+                  className="w-full" 
+                  onClick={handleCsvUpload}
+                  disabled={uploading}
+                >
+                  {uploading ? "Mengupload..." : "Upload CSV"}
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -402,11 +427,22 @@ const Import = () => {
               <CardDescription>Import dari link Google Sheets</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Input placeholder="Paste Google Sheets URL" disabled />
-              <Button className="w-full" disabled>
-                Preview Data
+              <Input 
+                placeholder="https://docs.google.com/spreadsheets/d/..." 
+                value={sheetsUrl}
+                onChange={(e) => setSheetsUrl(e.target.value)}
+                disabled={uploading}
+              />
+              <Button 
+                className="w-full" 
+                onClick={handleSheetsImport}
+                disabled={uploading || !sheetsUrl}
+              >
+                {uploading ? "Mengimport..." : "Import dari Google Sheets"}
               </Button>
-              <p className="text-xs text-muted-foreground">Feature coming soon</p>
+              <p className="text-xs text-muted-foreground">
+                Pastikan sheet sudah dipublikasikan (File → Share → Publish to web)
+              </p>
             </CardContent>
           </Card>
 
