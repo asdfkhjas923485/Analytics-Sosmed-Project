@@ -211,7 +211,6 @@ const Import = () => {
           reach, likes, comments, shares, saved,
           views: parseInt(values[getColumnIndex("views")]) || 0,
           followers: parseInt(values[getColumnIndex("followers")]) || 0,
-          engagement,
           engagement_rate: reach > 0 ? parseFloat(((engagement / reach) * 100).toFixed(2)) : 0,
           caption: values[getColumnIndex("caption")]?.trim() || "",
         });
