@@ -221,11 +221,30 @@ const Import = () => {
         throw new Error("Tidak ada data valid yang bisa diimport. Periksa format CSV Anda.");
       }
 
-      await supabase.from("posts").insert(posts);
+      console.log("Attempting to insert posts:", posts);
+      
+      const { data: insertedPosts, error: postsError } = await supabase
+        .from("posts")
+        .insert(posts)
+        .select();
+
+      if (postsError) {
+        console.error("Error inserting posts:", postsError);
+        await supabase.from("imports_log").insert({ 
+          dataset_id: dataset.id, 
+          status: "failed", 
+          message: `Failed to insert posts: ${postsError.message}`,
+          invalid_rows_count: posts.length
+        });
+        throw new Error(`Gagal menyimpan posts: ${postsError.message}`);
+      }
+
+      console.log("Successfully inserted posts:", insertedPosts);
+
       await supabase.from("imports_log").insert({ 
         dataset_id: dataset.id, 
         status: "success", 
-        message: `Imported ${posts.length} posts`,
+        message: `Imported ${insertedPosts?.length || posts.length} posts`,
         invalid_rows_count: errors.length
       });
       
@@ -238,7 +257,17 @@ const Import = () => {
       setCsvFile(null);
       setShowPreview(false);
     } catch (error: any) {
+      console.error("CSV upload error:", error);
       toast.error(`Error: ${error.message}`);
+      
+      // If dataset was created but posts failed, delete the empty dataset
+      if (error.message?.includes("Gagal menyimpan posts")) {
+        try {
+          await supabase.from("datasets").delete().eq("name", csvFile?.name || "");
+        } catch (cleanupError) {
+          console.error("Failed to cleanup dataset:", cleanupError);
+        }
+      }
     } finally {
       setUploading(false);
     }
