@@ -148,6 +148,13 @@ const Import = () => {
       const text = await csvFile.text();
       const { lines, getColumnIndex } = parseCSV(text);
 
+      // Deactivate all existing datasets first
+      await supabase
+        .from("datasets")
+        .update({ is_active: false })
+        .eq("project_id", selectedProject.id);
+
+      // Create new dataset and set as active
       const { data: dataset, error: datasetError } = await supabase
         .from("datasets")
         .insert({
@@ -155,6 +162,7 @@ const Import = () => {
           name: csvFile.name,
           source_type: "upload_csv",
           row_count: lines.length - 1,
+          is_active: true,
         })
         .select()
         .single();
@@ -221,7 +229,7 @@ const Import = () => {
         invalid_rows_count: errors.length
       });
       
-      toast.success(`Berhasil import ${posts.length} posts!${errors.length > 0 ? ` (${errors.length} baris dilewati)` : ""}`);
+      toast.success(`Berhasil import ${posts.length} posts! Dataset sekarang aktif dan data dapat dilihat di Dashboard.${errors.length > 0 ? ` (${errors.length} baris dilewati)` : ""}`);
       if (errors.length > 0 && errors.length <= 5) {
         errors.forEach(err => toast.warning(err));
       }
@@ -260,6 +268,13 @@ const Import = () => {
       const missing = required.filter((col) => !headers.includes(col));
       if (missing.length > 0) throw new Error(`Kolom yang hilang: ${missing.join(", ")}`);
 
+      // Deactivate all existing datasets first
+      await supabase
+        .from("datasets")
+        .update({ is_active: false })
+        .eq("project_id", selectedProject.id);
+
+      // Create new dataset and set as active
       const { data: dataset } = await supabase
         .from("datasets")
         .insert({
@@ -268,6 +283,7 @@ const Import = () => {
           source_type: "google_sheet",
           storage_path: sheetsUrl,
           row_count: lines.length - 1,
+          is_active: true,
         })
         .select()
         .single();
