@@ -199,7 +199,6 @@ const Import = () => {
         const comments = parseInt(values[getColumnIndex("comments")]) || 0;
         const shares = parseInt(values[getColumnIndex("shares")]) || 0;
         const saved = parseInt(values[getColumnIndex("saved")]) || 0;
-        const engagement = likes + comments + shares + saved;
 
         posts.push({
           project_id: selectedProject.id,
@@ -208,10 +207,13 @@ const Import = () => {
           content_type_id: contentType.id,
           post_id: values[getColumnIndex("post_id")]?.trim() || `POST-${i}`,
           posted_at: new Date(values[getColumnIndex("posted_at")]?.trim()).toISOString(),
-          reach, likes, comments, shares, saved,
+          reach: parseInt(values[getColumnIndex("reach")]) || 0,
+          likes,
+          comments,
+          shares,
+          saved,
           views: parseInt(values[getColumnIndex("views")]) || 0,
           followers: parseInt(values[getColumnIndex("followers")]) || 0,
-          engagement_rate: reach > 0 ? parseFloat(((engagement / reach) * 100).toFixed(2)) : 0,
           caption: values[getColumnIndex("caption")]?.trim() || "",
         });
       }
