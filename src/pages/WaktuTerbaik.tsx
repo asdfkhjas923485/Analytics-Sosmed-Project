@@ -243,7 +243,11 @@ const WaktuTerbaik = () => {
         <Card>
           <CardHeader>
             <CardTitle>Heatmap: Hari vs Jam</CardTitle>
-            <CardDescription>Warna lebih gelap = performa lebih baik</CardDescription>
+            <CardDescription>
+              <span className="inline-block px-2 py-1 rounded bg-green-500/40 text-green-950 text-xs mr-2">Terbaik</span>
+              <span className="inline-block px-2 py-1 rounded bg-yellow-500/40 text-yellow-950 text-xs mr-2">Medium</span>
+              <span className="inline-block px-2 py-1 rounded bg-red-500/30 text-red-950 text-xs">Kurang</span>
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -261,7 +265,32 @@ const WaktuTerbaik = () => {
                 <tbody>
                   {heatmapData.map((row, dayIndex) => {
                     const values = Array.from({ length: 24 }, (_, h) => row[`h${h}`] || 0);
-                    const maxVal = Math.max(...values.filter(v => v > 0), 1);
+                    const allValues = heatmapData.flatMap(r => 
+                      Array.from({ length: 24 }, (_, h) => r[`h${h}`] || 0)
+                    ).filter(v => v > 0);
+                    const minVal = Math.min(...allValues);
+                    const maxVal = Math.max(...allValues);
+                    const range = maxVal - minVal;
+                    
+                    const getHeatmapColor = (val: number) => {
+                      if (val === 0) return "bg-muted/30 text-muted-foreground/50";
+                      
+                      const normalized = range > 0 ? (val - minVal) / range : 0;
+                      
+                      if (normalized >= 0.66) {
+                        // High performance - green shades
+                        const intensity = 30 + (normalized - 0.66) / 0.34 * 40;
+                        return `bg-green-500/${Math.round(intensity)} text-green-950 font-medium`;
+                      } else if (normalized >= 0.33) {
+                        // Medium performance - yellow/amber shades
+                        const intensity = 30 + (normalized - 0.33) / 0.33 * 40;
+                        return `bg-yellow-500/${Math.round(intensity)} text-yellow-950 font-medium`;
+                      } else {
+                        // Low performance - red shades
+                        const intensity = 20 + (normalized / 0.33) * 30;
+                        return `bg-red-500/${Math.round(intensity)} text-red-950 font-medium`;
+                      }
+                    };
                     
                     return (
                       <tr key={dayIndex}>
@@ -269,15 +298,12 @@ const WaktuTerbaik = () => {
                           {row.day}
                         </td>
                         {values.map((val, hour) => {
-                          const intensity = val > 0 ? Math.min((val / maxVal) * 100, 100) : 0;
-                          const bgColor = val === 0 
-                            ? "bg-muted" 
-                            : `hsl(var(--primary) / ${intensity}%)`;
+                          const colorClass = getHeatmapColor(val);
                           
                           return (
                             <td
                               key={hour}
-                              className={`border border-border p-2 text-xs text-center ${bgColor}`}
+                              className={`border border-border p-2 text-xs text-center transition-colors ${colorClass}`}
                               title={`${row.day} ${hour}:00 - ${metric === "er" ? val.toFixed(2) + "%" : val.toLocaleString()}`}
                             >
                               {val > 0 ? (metric === "er" ? val.toFixed(1) : Math.round(val)) : ""}
