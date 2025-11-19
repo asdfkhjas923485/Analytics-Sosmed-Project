@@ -285,6 +285,8 @@ const WaktuTerbaik = () => {
           </div>
         </div>
 
+        <InsightCard insight={insight} />
+
         {/* Heatmap */}
         <Card>
           <CardHeader>

@@ -312,6 +312,8 @@ const Perbandingan = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
+
+            <InsightCard insight={insight} />
           </>
         )}
       </div>
