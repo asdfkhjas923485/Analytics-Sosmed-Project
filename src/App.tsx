@@ -14,6 +14,7 @@ import Audiens from "./pages/Audiens";
 import Laporan from "./pages/Laporan";
 import Platform from "./pages/Platform";
 import Perbandingan from "./pages/Perbandingan";
+import RingkasanInsight from "./pages/RingkasanInsight";
 import ProjectNew from "./pages/ProjectNew";
 import NotFound from "./pages/NotFound";
 
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/laporan" element={<Laporan />} />
               <Route path="/platform" element={<Platform />} />
               <Route path="/perbandingan" element={<Perbandingan />} />
+              <Route path="/ringkasan-insight" element={<RingkasanInsight />} />
               <Route path="/projects/new" element={<ProjectNew />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

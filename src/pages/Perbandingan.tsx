@@ -107,12 +107,17 @@ const Perbandingan = () => {
         const validComparisons = comparisons.filter(c => c !== null);
         setComparison(validComparisons);
 
-        const chart = validComparisons.map(c => ({
-          name: c.datasetName,
-          "Avg ER (%)": c.avgER,
-          "Median Reach": c.medianReach,
-          "Total Posts": c.totalPosts
-        }));
+        // Restructure data for grouped bar chart
+        const metrics = ["Avg ER (%)", "Median Reach", "Total Posts"];
+        const chart = metrics.map(metric => {
+          const row: any = { metric };
+          validComparisons.forEach(c => {
+            if (metric === "Avg ER (%)") row[c.datasetName] = c.avgER;
+            else if (metric === "Median Reach") row[c.datasetName] = c.medianReach;
+            else if (metric === "Total Posts") row[c.datasetName] = c.totalPosts;
+          });
+          return row;
+        });
         setChartData(chart);
         generateInsight(validComparisons);
       } catch (error) {
