@@ -14,6 +14,7 @@ import { Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { InsightCard } from "@/components/InsightCard";
 
 type SortBy = "er" | "reach" | "engagement";
 
@@ -35,6 +36,7 @@ const Performa = () => {
   const [selectedContentTypes, setSelectedContentTypes] = useState<string[]>([]);
   const [platforms, setPlatforms] = useState<any[]>([]);
   const [contentTypes, setContentTypes] = useState<any[]>([]);
+  const [insight, setInsight] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -128,7 +130,62 @@ const Performa = () => {
     }
 
     setFilteredPosts(filtered);
+    generateInsight(filtered, sortBy);
   }, [posts, dateFrom, dateTo, minReach, searchCaption, selectedPlatforms, selectedContentTypes, sortBy]);
+
+  const generateInsight = (allPosts: any[], currentSortBy: SortBy) => {
+    if (allPosts.length === 0) {
+      setInsight("");
+      return;
+    }
+
+    const top5 = allPosts.slice(0, 5);
+    
+    const platformCount = new Map<string, number>();
+    const contentTypeCount = new Map<string, number>();
+    
+    top5.forEach(post => {
+      const platform = post.platforms?.display_name || "Unknown";
+      const contentType = post.content_types?.display_name || "Unknown";
+      platformCount.set(platform, (platformCount.get(platform) || 0) + 1);
+      contentTypeCount.set(contentType, (contentTypeCount.get(contentType) || 0) + 1);
+    });
+    
+    const topPlatform = Array.from(platformCount.entries()).sort((a, b) => b[1] - a[1])[0];
+    const topContentType = Array.from(contentTypeCount.entries()).sort((a, b) => b[1] - a[1])[0];
+
+    let insightText = "";
+
+    if (currentSortBy === "er") {
+      const erTop5Avg = top5.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / top5.length;
+      const erAllAvg = allPosts.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / allPosts.length;
+      const diff = ((erTop5Avg - erAllAvg) / erAllAvg) * 100;
+      
+      insightText = `Konten dengan engagement rate tertinggi didominasi oleh platform ${topPlatform[0]} (${topPlatform[1]} dari 5 teratas) dan tipe konten ${topContentType[0]} (${topContentType[1]} dari 5 teratas). `;
+      insightText += `Rata-rata ER top 5 adalah ${erTop5Avg.toFixed(2)}%, ${diff > 0 ? 'lebih tinggi' : 'lebih rendah'} ${Math.abs(diff).toFixed(1)}% dari rata-rata keseluruhan (${erAllAvg.toFixed(2)}%). `;
+      insightText += `Kombinasi ${topPlatform[0]} dengan format ${topContentType[0]} paling efektif untuk mendorong engagement tinggi.`;
+    } else if (currentSortBy === "reach") {
+      const reachTop5Avg = top5.reduce((sum, p) => sum + (p.reach || 0), 0) / top5.length;
+      const erTop5Avg = top5.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / top5.length;
+      const erAllAvg = allPosts.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / allPosts.length;
+      const erDiff = erTop5Avg - erAllAvg;
+      
+      insightText = `Konten dengan jangkauan terluas didominasi oleh ${topPlatform[0]} (${topPlatform[1]} dari 5 teratas) dan ${topContentType[0]} (${topContentType[1]} dari 5 teratas) dengan rata-rata reach ${reachTop5Avg.toLocaleString()}. `;
+      
+      if (Math.abs(erDiff) < 0.5) {
+        insightText += `ER-nya mirip dengan rata-rata (${erTop5Avg.toFixed(2)}% vs ${erAllAvg.toFixed(2)}%), menunjukkan keseimbangan antara luas jangkauan dan kualitas interaksi.`;
+      } else if (erDiff > 0) {
+        insightText += `ER-nya bahkan di atas rata-rata (${erTop5Avg.toFixed(2)}% vs ${erAllAvg.toFixed(2)}%), menunjukkan jangkauan luas dengan interaksi berkualitas.`;
+      } else {
+        insightText += `Namun ER-nya di bawah rata-rata (${erTop5Avg.toFixed(2)}% vs ${erAllAvg.toFixed(2)}%), menunjukkan jangkauan luas namun interaksi relatif lebih rendah.`;
+      }
+    } else {
+      insightText = `Konten dengan total engagement tertinggi (likes + comments + shares + saved) didominasi ${topPlatform[0]} (${topPlatform[1]} dari 5 teratas) dan ${topContentType[0]} (${topContentType[1]} dari 5 teratas). `;
+      insightText += `Grup ini berisi konten dengan jumlah aksi tertinggi dari audiens. Format dan tema di grup ini sangat cocok dijadikan referensi untuk konten yang paling engaging di masa depan.`;
+    }
+
+    setInsight(insightText);
+  };
 
   const handleExport = () => {
     const csv = [
@@ -362,6 +419,8 @@ const Performa = () => {
             )}
           </CardContent>
         </Card>
+
+        <InsightCard insight={insight} />
       </div>
     </AppLayout>
   );

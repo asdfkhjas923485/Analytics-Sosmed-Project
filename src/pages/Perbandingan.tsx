@@ -10,6 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { TrendingUp, Users, Eye } from "lucide-react";
+import { InsightCard } from "@/components/InsightCard";
 
 const Perbandingan = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const Perbandingan = () => {
   const [comparison, setComparison] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [insight, setInsight] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -105,33 +107,17 @@ const Perbandingan = () => {
         const validComparisons = comparisons.filter(c => c !== null);
         setComparison(validComparisons);
 
-        const chart = [
-          {
-            metric: "Avg ER (%)",
-            ...validComparisons.reduce((acc, comp) => {
-              acc[comp.datasetName] = comp.avgER;
-              return acc;
-            }, {} as any)
-          },
-          {
-            metric: "Median Reach",
-            ...validComparisons.reduce((acc, comp) => {
-              acc[comp.datasetName] = comp.medianReach;
-              return acc;
-            }, {} as any)
-          },
-          {
-            metric: "Total Posts",
-            ...validComparisons.reduce((acc, comp) => {
-              acc[comp.datasetName] = comp.totalPosts;
-              return acc;
-            }, {} as any)
-          }
-        ];
+        const chart = validComparisons.map(c => ({
+          name: c.datasetName,
+          "Avg ER (%)": c.avgER,
+          "Median Reach": c.medianReach,
+          "Total Posts": c.totalPosts
+        }));
         setChartData(chart);
+        generateInsight(validComparisons);
       } catch (error) {
         console.error("Error fetching comparison:", error);
-        toast.error("Gagal memuat data perbandingan");
+        toast.error("Gagal memuat perbandingan");
       } finally {
         setLoading(false);
       }
@@ -139,6 +125,29 @@ const Perbandingan = () => {
 
     fetchComparison();
   }, [selectedDatasets, datasets]);
+
+  const generateInsight = (data: any[]) => {
+    if (data.length < 2) {
+      setInsight("");
+      return;
+    }
+
+    const sortedByER = [...data].sort((a, b) => b.avgER - a.avgER);
+    const sortedByReach = [...data].sort((a, b) => b.medianReach - a.medianReach);
+    
+    const bestER = sortedByER[0];
+    const bestReach = sortedByReach[0];
+    
+    let insightText = "";
+    
+    if (bestER.datasetId === bestReach.datasetId) {
+      insightText = `Dataset "${bestER.datasetName}" unggul di kedua metrik dengan rata-rata engagement rate ${bestER.avgER.toFixed(2)}% dan median reach ${bestReach.medianReach.toLocaleString()}. Periode atau kampanye ini menunjukkan performa terbaik secara keseluruhan, baik dalam kualitas interaksi maupun luas jangkauan.`;
+    } else {
+      insightText = `Dataset "${bestER.datasetName}" unggul di kualitas interaksi dengan rata-rata ER ${bestER.avgER.toFixed(2)}%, sementara "${bestReach.datasetName}" unggul di luas jangkauan dengan median reach ${bestReach.medianReach.toLocaleString()}. Ini menunjukkan bahwa ${bestER.datasetName} lebih kuat dalam mendorong engagement berkualitas, sedangkan ${bestReach.datasetName} lebih efektif dalam menjangkau audiens luas.`;
+    }
+
+    setInsight(insightText);
+  };
 
   const handleDatasetToggle = (datasetId: string) => {
     if (selectedDatasets.includes(datasetId)) {
