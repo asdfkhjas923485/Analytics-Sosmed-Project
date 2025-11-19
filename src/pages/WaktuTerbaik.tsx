@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Trophy } from "lucide-react";
+import { InsightCard } from "@/components/InsightCard";
 
 type MetricType = "er" | "engagement" | "reach";
 
@@ -26,6 +27,7 @@ const WaktuTerbaik = () => {
   const [heatmapData, setHeatmapData] = useState<any[]>([]);
   const [hourlyData, setHourlyData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [insight, setInsight] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -140,7 +142,51 @@ const WaktuTerbaik = () => {
       count
     }));
     setHourlyData(hourly);
+    generateInsight(top3);
   }, [posts, metric]);
+
+  const generateInsight = (sortedSlots: any[]) => {
+    if (sortedSlots.length === 0) {
+      setInsight("");
+      return;
+    }
+
+    const best = sortedSlots[0];
+    const metricValue = best.value;
+    const metricLabel = metric === "er" ? "engagement rate" : metric === "engagement" ? "engagement" : "reach";
+    
+    let insightText = `Slot waktu terbaik untuk posting adalah ${best.dayName} pukul ${best.hourStr} dengan median ${metricLabel} ${metric === "er" ? metricValue.toFixed(2) + "%" : metricValue.toLocaleString()}`;
+    
+    if (sortedSlots.length >= 2) {
+      const second = sortedSlots[1];
+      const secondValue = second.value;
+      const diff = Math.abs(metricValue - secondValue);
+      const diffPercent = (diff / metricValue) * 100;
+      
+      if (diffPercent < 10) {
+        insightText += `. Alternatif lain yang juga kuat adalah ${second.dayName} pukul ${second.hourStr}`;
+        
+        if (sortedSlots.length >= 3) {
+          const third = sortedSlots[2];
+          const thirdValue = third.value;
+          const diff3 = Math.abs(metricValue - thirdValue);
+          const diffPercent3 = (diff3 / metricValue) * 100;
+          
+          if (diffPercent3 < 15) {
+            insightText += ` dan ${third.dayName} pukul ${third.hourStr}`;
+          }
+        }
+        insightText += ", karena performanya tidak jauh berbeda";
+      }
+    }
+    
+    if (best.count < 3) {
+      insightText += `. Perlu diperhatikan bahwa sampel di slot ini masih kecil (${best.count} post), sebaiknya diuji lebih lanjut dengan posting lebih banyak konten pada waktu tersebut`;
+    }
+    
+    insightText += ".";
+    setInsight(insightText);
+  };
 
   const getMetricLabel = () => {
     if (metric === "er") return "Engagement Rate (%)";

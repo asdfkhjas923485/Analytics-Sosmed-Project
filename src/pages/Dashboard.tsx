@@ -9,6 +9,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { InsightCard } from "@/components/InsightCard";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -25,6 +26,11 @@ const Dashboard = () => {
   const [weeklyERTrend, setWeeklyERTrend] = useState<any[]>([]);
   const [platformDist, setPlatformDist] = useState<any[]>([]);
   const [contentTypeDist, setContentTypeDist] = useState<any[]>([]);
+  const [insights, setInsights] = useState({
+    erTrend: "",
+    platform: "",
+    contentType: ""
+  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -125,6 +131,9 @@ const Dashboard = () => {
             .map(([name, count]) => ({ name, count }))
             .sort((a, b) => b.count - a.count);
           setContentTypeDist(contentTypes);
+          
+          // Generate insights
+          generateInsights(posts, weeklyTrend, platforms, contentTypes);
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -134,6 +143,123 @@ const Dashboard = () => {
 
     fetchDashboardData();
   }, [selectedProject, activeDataset]);
+
+  const generateInsights = (
+    posts: any[],
+    weeklyData: any[],
+    platformData: any[],
+    contentTypeData: any[]
+  ) => {
+    // 1. Tren ER Mingguan
+    let erTrendInsight = "";
+    if (weeklyData.length >= 2) {
+      const erFirst = weeklyData[0].avgER;
+      const erLast = weeklyData[weeklyData.length - 1].avgER;
+      
+      if (erFirst === 0) {
+        erTrendInsight = "Data awal belum cukup untuk menghitung tren engagement rate mingguan. Lanjutkan posting konten secara konsisten untuk mendapatkan insight yang lebih akurat.";
+      } else {
+        const deltaPercent = ((erLast - erFirst) / erFirst) * 100;
+        let trendCategory = "";
+        let suggestion = "";
+        
+        if (deltaPercent > 10) {
+          trendCategory = "tren naik";
+          suggestion = "Pertahankan pola konten dan jadwal posting saat ini karena menunjukkan performa yang meningkat.";
+        } else if (deltaPercent < -10) {
+          trendCategory = "tren turun";
+          suggestion = "Evaluasi konten dan eksperimen dengan format atau jadwal posting baru untuk meningkatkan engagement.";
+        } else {
+          trendCategory = "relatif stabil";
+          suggestion = "Mulai eksperimen dengan format konten atau jadwal posting berbeda untuk meningkatkan engagement rate.";
+        }
+        
+        erTrendInsight = `Engagement rate minggu pertama sebesar ${erFirst.toFixed(2)}% dan minggu terakhir ${erLast.toFixed(2)}%, menunjukkan ${trendCategory} dengan perubahan ${deltaPercent > 0 ? '+' : ''}${deltaPercent.toFixed(1)}%. ${suggestion}`;
+      }
+    } else {
+      erTrendInsight = "Belum cukup data mingguan untuk menganalisis tren engagement rate. Tambahkan lebih banyak konten untuk mendapatkan insight yang lebih baik.";
+    }
+
+    // 2. Distribusi Platform
+    let platformInsight = "";
+    if (platformData.length > 0) {
+      const totalPosts = posts.length;
+      const platformWithPercent = platformData.map(p => ({
+        ...p,
+        percentage: ((p.count / totalPosts) * 100).toFixed(1)
+      }));
+      
+      const dominant = platformWithPercent[0];
+      const dominantPercent = parseFloat(dominant.percentage);
+      
+      if (dominantPercent > 50) {
+        platformInsight = `Platform ${dominant.name} mendominasi dengan ${dominant.percentage}% dari total konten, menunjukkan fokus strategi yang sangat kuat pada platform ini.`;
+      } else if (platformWithPercent.length > 1) {
+        const second = platformWithPercent[1];
+        const diff = dominantPercent - parseFloat(second.percentage);
+        
+        if (diff < 10) {
+          platformInsight = `Platform ${dominant.name} (${dominant.percentage}%) dan ${second.name} (${second.percentage}%) memiliki distribusi yang relatif merata, menunjukkan strategi multi-platform yang seimbang.`;
+        } else {
+          platformInsight = `Platform ${dominant.name} menjadi fokus utama dengan ${dominant.percentage}% konten.`;
+        }
+      }
+      
+      const smallPlatforms = platformWithPercent.filter(p => parseFloat(p.percentage) < 10);
+      if (smallPlatforms.length > 0) {
+        const platformNames = smallPlatforms.map(p => p.name).join(", ");
+        platformInsight += ` Platform ${platformNames} masih minim dieksplor dengan porsi di bawah 10%, berpotensi untuk ditingkatkan.`;
+      }
+    }
+
+    // 3. Distribusi Tipe Konten
+    let contentTypeInsight = "";
+    if (contentTypeData.length > 0 && posts.length > 0) {
+      const totalPosts = posts.length;
+      const contentTypeWithPercent = contentTypeData.map(c => ({
+        ...c,
+        percentage: ((c.count / totalPosts) * 100).toFixed(1)
+      }));
+      
+      const mostUsed = contentTypeWithPercent[0];
+      contentTypeInsight = `Tipe konten ${mostUsed.name} paling sering digunakan dengan ${mostUsed.percentage}% dari total konten.`;
+      
+      // Calculate avg ER per content type
+      const contentTypeERMap = new Map<string, { totalER: number; count: number }>();
+      posts.forEach(post => {
+        const type = post.content_types?.display_name || "Unknown";
+        if (!contentTypeERMap.has(type)) {
+          contentTypeERMap.set(type, { totalER: 0, count: 0 });
+        }
+        const data = contentTypeERMap.get(type)!;
+        data.totalER += post.engagement_rate || 0;
+        data.count++;
+      });
+      
+      let bestType = { type: "", avgER: 0, count: 0 };
+      contentTypeERMap.forEach((data, type) => {
+        const avgER = data.totalER / data.count;
+        if (avgER > bestType.avgER) {
+          bestType = { type, avgER, count: data.count };
+        }
+      });
+      
+      if (bestType.type && bestType.type !== mostUsed.name) {
+        const bestPercent = (bestType.count / posts.length) * 100;
+        if (bestPercent < parseFloat(mostUsed.percentage)) {
+          contentTypeInsight += ` Menariknya, tipe ${bestType.type} memiliki engagement rate rata-rata tertinggi (${bestType.avgER.toFixed(2)}%) namun porsinya masih ${bestPercent.toFixed(1)}%, sangat potensial untuk dinaikkan porsinya.`;
+        }
+      }
+      
+      contentTypeInsight += ` Perhatikan kombinasi antara tipe yang paling sering digunakan dengan tipe yang paling efektif untuk mengoptimalkan strategi konten.`;
+    }
+
+    setInsights({
+      erTrend: erTrendInsight,
+      platform: platformInsight,
+      contentType: contentTypeInsight
+    });
+  };
 
   if (authLoading || appLoading) {
     return (
@@ -303,6 +429,8 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
+        <InsightCard insight={insights.erTrend} />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Platform Distribution */}
           <Card>
@@ -360,6 +488,9 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        <InsightCard insight={insights.platform} />
+        <InsightCard insight={insights.contentType} />
       </div>
     </AppLayout>
   );
