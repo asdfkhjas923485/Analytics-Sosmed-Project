@@ -24,10 +24,10 @@ const Platform = () => {
   const [editingPlatform, setEditingPlatform] = useState<any>(null);
   
   const [formData, setFormData] = useState({
-    name: "",
-    display_name: "",
-    color: "#000000",
-    is_active: true
+    kode_platform: "",
+    nama_platform: "",
+    warna_platform: "#000000",
+    platform_aktif: true
   });
 
   useEffect(() => {
@@ -37,7 +37,7 @@ const Platform = () => {
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    if (profile && profile.role !== "admin") {
+    if (profile && profile.peran !== "admin") {
       toast.error("Halaman ini hanya untuk admin");
       navigate("/dashboard");
     }
@@ -51,7 +51,7 @@ const Platform = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from("platforms")
+        .from("platform")
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -72,7 +72,7 @@ const Platform = () => {
     try {
       if (editingPlatform) {
         const { error } = await supabase
-          .from("platforms")
+          .from("platform")
           .update(formData)
           .eq("id", editingPlatform.id);
 
@@ -80,7 +80,7 @@ const Platform = () => {
         toast.success("Platform berhasil diupdate");
       } else {
         const { error } = await supabase
-          .from("platforms")
+          .from("platform")
           .insert([formData]);
 
         if (error) throw error;
@@ -90,10 +90,10 @@ const Platform = () => {
       setIsDialogOpen(false);
       setEditingPlatform(null);
       setFormData({
-        name: "",
-        display_name: "",
-        color: "#000000",
-        is_active: true
+        kode_platform: "",
+        nama_platform: "",
+        warna_platform: "#000000",
+        platform_aktif: true
       });
       fetchPlatforms();
     } catch (error) {
@@ -107,10 +107,10 @@ const Platform = () => {
   const handleEdit = (platform: any) => {
     setEditingPlatform(platform);
     setFormData({
-      name: platform.name,
-      display_name: platform.display_name,
-      color: platform.color,
-      is_active: platform.is_active
+      kode_platform: platform.kode_platform,
+      nama_platform: platform.nama_platform,
+      warna_platform: platform.warna_platform,
+      platform_aktif: platform.platform_aktif
     });
     setIsDialogOpen(true);
   };
@@ -121,7 +121,7 @@ const Platform = () => {
     setLoading(true);
     try {
       const { error } = await supabase
-        .from("platforms")
+        .from("platform")
         .delete()
         .eq("id", id);
 
@@ -139,8 +139,8 @@ const Platform = () => {
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
     try {
       const { error } = await supabase
-        .from("platforms")
-        .update({ is_active: !currentStatus })
+        .from("platform")
+        .update({ platform_aktif: !currentStatus })
         .eq("id", id);
 
       if (error) throw error;
@@ -152,7 +152,7 @@ const Platform = () => {
     }
   };
 
-  if (profile?.role !== "admin") {
+  if (profile?.peran !== "admin") {
     return null;
   }
 
@@ -170,10 +170,10 @@ const Platform = () => {
               <Button onClick={() => {
                 setEditingPlatform(null);
                 setFormData({
-                  name: "",
-                  display_name: "",
-                  color: "#000000",
-                  is_active: true
+                  kode_platform: "",
+                  nama_platform: "",
+                  warna_platform: "#000000",
+                  platform_aktif: true
                 });
               }}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -188,43 +188,43 @@ const Platform = () => {
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <Label>Name (key)</Label>
+                  <Label>Kode Platform</Label>
                   <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    value={formData.kode_platform}
+                    onChange={(e) => setFormData({ ...formData, kode_platform: e.target.value })}
                     placeholder="instagram"
                     required
                   />
                 </div>
                 <div>
-                  <Label>Display Name</Label>
+                  <Label>Nama Platform</Label>
                   <Input
-                    value={formData.display_name}
-                    onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                    value={formData.nama_platform}
+                    onChange={(e) => setFormData({ ...formData, nama_platform: e.target.value })}
                     placeholder="Instagram"
                     required
                   />
                 </div>
                 <div>
-                  <Label>Color</Label>
+                  <Label>Warna</Label>
                   <div className="flex items-center space-x-2">
                     <Input
                       type="color"
-                      value={formData.color}
-                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      value={formData.warna_platform}
+                      onChange={(e) => setFormData({ ...formData, warna_platform: e.target.value })}
                       className="w-20 h-10"
                     />
                     <Input
-                      value={formData.color}
-                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      value={formData.warna_platform}
+                      onChange={(e) => setFormData({ ...formData, warna_platform: e.target.value })}
                       placeholder="#000000"
                     />
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Switch
-                    checked={formData.is_active}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                    checked={formData.platform_aktif}
+                    onCheckedChange={(checked) => setFormData({ ...formData, platform_aktif: checked })}
                   />
                   <Label>Aktif</Label>
                 </div>
@@ -261,21 +261,21 @@ const Platform = () => {
                 <TableBody>
                   {platforms.map(platform => (
                     <TableRow key={platform.id}>
-                      <TableCell className="font-medium">{platform.name}</TableCell>
-                      <TableCell>{platform.display_name}</TableCell>
+                      <TableCell className="font-medium">{platform.kode_platform}</TableCell>
+                      <TableCell>{platform.nama_platform}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <div 
                             className="w-6 h-6 rounded border border-border"
-                            style={{ backgroundColor: platform.color }}
+                            style={{ backgroundColor: platform.warna_platform }}
                           />
-                          <span className="text-sm text-muted-foreground">{platform.color}</span>
+                          <span className="text-sm text-muted-foreground">{platform.warna_platform}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <Switch
-                          checked={platform.is_active}
-                          onCheckedChange={() => handleToggleActive(platform.id, platform.is_active)}
+                          checked={platform.platform_aktif}
+                          onCheckedChange={() => handleToggleActive(platform.id, platform.platform_aktif)}
                         />
                       </TableCell>
                       <TableCell className="text-right">

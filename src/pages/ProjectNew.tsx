@@ -37,11 +37,11 @@ const ProjectNew = () => {
 
     try {
       const { data, error } = await supabase
-        .from("projects")
+        .from("proyek")
         .insert({
-          name: name.trim(),
-          description: description.trim() || null,
-          user_id: user!.id
+          nama_proyek: name.trim(),
+          deskripsi_proyek: description.trim() || null,
+          id_pemilik: user!.id
         })
         .select()
         .single();
