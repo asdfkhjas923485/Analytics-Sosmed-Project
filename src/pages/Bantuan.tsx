@@ -11,9 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { MessageSquare, CheckCircle, Clock } from "lucide-react";
+import { MessageSquare, CheckCircle, Clock, Star } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
+import RatingDialog from "@/components/RatingDialog";
 
 interface Question {
   id: string;
@@ -23,6 +24,9 @@ interface Question {
   status: string;
   created_at: string;
   updated_at: string;
+  rating: number | null;
+  komentar_rating: string | null;
+  rating_at: string | null;
 }
 
 const Bantuan = () => {
@@ -35,6 +39,8 @@ const Bantuan = () => {
   const [judul, setJudul] = useState("");
   const [pertanyaan, setPertanyaan] = useState("");
   const [filter, setFilter] = useState<"semua" | "menunggu" | "dijawab">("semua");
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
+  const [selectedQuestionForRating, setSelectedQuestionForRating] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -262,12 +268,46 @@ const Bantuan = () => {
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap">{q.isi_pertanyaan}</p>
                       </div>
                       {q.jawaban && (
-                        <div className="bg-muted p-4 rounded-lg">
-                          <p className="text-sm font-medium mb-1">Jawaban Admin:</p>
-                          <p className="text-sm whitespace-pre-wrap">{q.jawaban}</p>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Dijawab: {format(new Date(q.updated_at), "dd MMM yyyy HH:mm", { locale: id })}
-                          </p>
+                        <div className="bg-muted p-4 rounded-lg space-y-3">
+                          <div>
+                            <p className="text-sm font-medium mb-1">Jawaban Admin:</p>
+                            <p className="text-sm whitespace-pre-wrap">{q.jawaban}</p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Dijawab: {format(new Date(q.updated_at), "dd MMM yyyy HH:mm", { locale: id })}
+                            </p>
+                          </div>
+                          {q.rating ? (
+                            <div className="border-t pt-3">
+                              <p className="text-sm font-medium mb-1">Rating Anda:</p>
+                              <div className="flex items-center gap-2">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`h-4 w-4 ${
+                                      star <= q.rating!
+                                        ? "fill-primary text-primary"
+                                        : "text-muted-foreground"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                              {q.komentar_rating && (
+                                <p className="text-sm text-muted-foreground mt-2">{q.komentar_rating}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedQuestionForRating(q.id);
+                                setRatingDialogOpen(true);
+                              }}
+                            >
+                              <Star className="h-4 w-4 mr-2" />
+                              Beri Rating
+                            </Button>
+                          )}
                         </div>
                       )}
                     </CardContent>
@@ -278,6 +318,18 @@ const Bantuan = () => {
           </CardContent>
         </Card>
       </div>
+
+      <RatingDialog
+        questionId={selectedQuestionForRating || ""}
+        isOpen={ratingDialogOpen}
+        onClose={() => {
+          setRatingDialogOpen(false);
+          setSelectedQuestionForRating(null);
+        }}
+        onSuccess={() => {
+          fetchQuestions();
+        }}
+      />
     </AppLayout>
   );
 };
