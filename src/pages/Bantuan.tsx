@@ -233,19 +233,23 @@ const Bantuan = () => {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <CardTitle className="text-lg">{q.judul_pertanyaan}</CardTitle>
-                          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2 mb-1">
+                            <CardTitle className="text-lg">{q.judul_pertanyaan}</CardTitle>
+                            {q.id_pengguna === user?.id && (
+                              <Badge variant="outline" className="text-xs">Pertanyaan Anda</Badge>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium">Ditanya oleh:</span>
+                              <span className="text-foreground">{q.profil?.nama_lengkap || 'Unknown'}</span>
+                            </div>
+                            <span>•</span>
                             <span>{format(new Date(q.created_at), "dd MMM yyyy HH:mm", { locale: id })}</span>
                             {q.proyek && (
                               <>
                                 <span>•</span>
                                 <span className="font-medium">{q.proyek.nama_proyek}</span>
-                              </>
-                            )}
-                            {q.profil && (
-                              <>
-                                <span>•</span>
-                                <span>{q.profil.nama_lengkap}</span>
                               </>
                             )}
                           </div>
@@ -281,7 +285,18 @@ const Bantuan = () => {
                           </div>
                           {q.rating ? (
                             <div className="border-t pt-3">
-                              <p className="text-sm font-medium mb-1">Rating Anda:</p>
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-sm font-medium">Rating:</p>
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <span>oleh</span>
+                                  <span className="font-medium text-foreground">{q.profil?.nama_lengkap}</span>
+                                  {q.rating_at && (
+                                    <span className="ml-1">
+                                      • {format(new Date(q.rating_at), "dd MMM yyyy", { locale: id })}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                               <div className="flex items-center gap-2">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                   <Star
@@ -293,9 +308,10 @@ const Bantuan = () => {
                                     }`}
                                   />
                                 ))}
+                                <span className="text-sm text-muted-foreground ml-1">({q.rating}/5)</span>
                               </div>
                               {q.komentar_rating && (
-                                <p className="text-sm text-muted-foreground mt-2">{q.komentar_rating}</p>
+                                <p className="text-sm text-muted-foreground mt-2 italic">"{q.komentar_rating}"</p>
                               )}
                             </div>
                            ) : q.id_pengguna === user?.id ? (
