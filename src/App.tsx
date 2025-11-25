@@ -18,6 +18,7 @@ import RingkasanInsight from "./pages/RingkasanInsight";
 import ProjectNew from "./pages/ProjectNew";
 import Bantuan from "./pages/Bantuan";
 import BantuanAdmin from "./pages/BantuanAdmin";
+import AdminTest from "./pages/AdminTest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/projects/new" element={<ProjectNew />} />
               <Route path="/bantuan" element={<Bantuan />} />
               <Route path="/bantuan-admin" element={<BantuanAdmin />} />
+              <Route path="/admin-test" element={<AdminTest />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppProvider>
