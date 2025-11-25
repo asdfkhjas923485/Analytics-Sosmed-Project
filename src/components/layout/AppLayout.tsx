@@ -88,7 +88,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               <NavLink to="/ringkasan-insight" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
                 Ringkasan Insight
               </NavLink>
-              {profile?.role === "admin" && (
+              {profile?.peran === "admin" && (
                 <NavLink to="/platform" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
                   Platform
                 </NavLink>
@@ -104,7 +104,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>
-                  {profile?.full_name || user?.email}
+                  {profile?.nama_lengkap || user?.email}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
@@ -134,7 +134,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                   <SelectContent>
                     {projects.map((project) => (
                       <SelectItem key={project.id} value={project.id}>
-                        {project.name}
+                        {project.nama_proyek}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -162,8 +162,8 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                     <SelectContent>
                       {datasets.map((dataset) => (
                         <SelectItem key={dataset.id} value={dataset.id}>
-                          {dataset.name}
-                          {dataset.is_active && " (Aktif)"}
+                          {dataset.nama_dataset}
+                          {dataset.dataset_aktif && " (Aktif)"}
                         </SelectItem>
                       ))}
                     </SelectContent>

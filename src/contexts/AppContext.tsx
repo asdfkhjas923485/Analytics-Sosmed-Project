@@ -5,23 +5,23 @@ import { toast } from "sonner";
 
 interface Project {
   id: string;
-  name: string;
-  description: string | null;
+  nama_proyek: string;
+  deskripsi_proyek: string | null;
 }
 
 interface Dataset {
   id: string;
-  name: string;
-  source_type: string;
-  is_active: boolean;
-  row_count: number;
+  nama_dataset: string;
+  jenis_sumber_dataset: string;
+  dataset_aktif: boolean;
+  jumlah_baris_dataset: number;
   created_at: string;
 }
 
 interface Profile {
   id: string;
-  role: 'admin' | 'user';
-  full_name: string | null;
+  peran: 'admin' | 'user';
+  nama_lengkap: string | null;
 }
 
 interface AppContextType {
@@ -53,7 +53,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (user) {
       const fetchProfile = async () => {
         const { data, error } = await supabase
-          .from("profiles")
+          .from("profil")
           .select("*")
           .eq("id", user.id)
           .single();
@@ -76,7 +76,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return;
 
     const { data, error } = await supabase
-      .from("projects")
+      .from("proyek")
       .select("*")
       .order("created_at", { ascending: false });
 
@@ -102,9 +102,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const { data, error } = await supabase
-      .from("datasets")
+      .from("dataset")
       .select("*")
-      .eq("project_id", selectedProject.id)
+      .eq("id_proyek", selectedProject.id)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -114,7 +114,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       setDatasets(data || []);
       
       // Find active dataset
-      const active = data?.find(d => d.is_active);
+      const active = data?.find(d => d.dataset_aktif);
       setActiveDatasetState(active || null);
     }
   };
@@ -125,9 +125,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     // First, deactivate all datasets for this project
     const { error: deactivateError } = await supabase
-      .from("datasets")
-      .update({ is_active: false })
-      .eq("project_id", selectedProject.id);
+      .from("dataset")
+      .update({ dataset_aktif: false })
+      .eq("id_proyek", selectedProject.id);
 
     if (deactivateError) {
       toast.error("Gagal mengubah dataset aktif");
@@ -136,8 +136,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     // Then activate the selected dataset
     const { error: activateError } = await supabase
-      .from("datasets")
-      .update({ is_active: true })
+      .from("dataset")
+      .update({ dataset_aktif: true })
       .eq("id", datasetId);
 
     if (activateError) {

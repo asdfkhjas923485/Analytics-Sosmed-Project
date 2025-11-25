@@ -14,479 +14,479 @@ export type Database = {
   }
   public: {
     Tables: {
-      campaigns: {
-        Row: {
-          created_at: string
-          end_date: string | null
-          id: string
-          name: string
-          notes: string | null
-          project_id: string
-          start_date: string | null
-        }
-        Insert: {
-          created_at?: string
-          end_date?: string | null
-          id?: string
-          name: string
-          notes?: string | null
-          project_id: string
-          start_date?: string | null
-        }
-        Update: {
-          created_at?: string
-          end_date?: string | null
-          id?: string
-          name?: string
-          notes?: string | null
-          project_id?: string
-          start_date?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "campaigns_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      content_types: {
-        Row: {
-          created_at: string
-          display_name: string
-          id: string
-          is_active: boolean
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          display_name: string
-          id?: string
-          is_active?: boolean
-          name: string
-        }
-        Update: {
-          created_at?: string
-          display_name?: string
-          id?: string
-          is_active?: boolean
-          name?: string
-        }
-        Relationships: []
-      }
-      datasets: {
+      anggota_proyek: {
         Row: {
           created_at: string
           id: string
-          is_active: boolean
-          name: string
-          project_id: string
-          row_count: number
-          source_type: Database["public"]["Enums"]["source_type"]
-          storage_path: string | null
+          id_pengguna: string
+          id_proyek: string
+          peran_dalam_proyek: Database["public"]["Enums"]["project_role"]
         }
         Insert: {
           created_at?: string
           id?: string
-          is_active?: boolean
-          name: string
-          project_id: string
-          row_count?: number
-          source_type?: Database["public"]["Enums"]["source_type"]
-          storage_path?: string | null
+          id_pengguna: string
+          id_proyek: string
+          peran_dalam_proyek?: Database["public"]["Enums"]["project_role"]
         }
         Update: {
           created_at?: string
           id?: string
-          is_active?: boolean
-          name?: string
-          project_id?: string
-          row_count?: number
-          source_type?: Database["public"]["Enums"]["source_type"]
-          storage_path?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "datasets_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      imports_log: {
-        Row: {
-          created_at: string
-          dataset_id: string
-          id: string
-          invalid_rows_count: number
-          message: string | null
-          missing_columns: Json | null
-          status: Database["public"]["Enums"]["import_status"]
-        }
-        Insert: {
-          created_at?: string
-          dataset_id: string
-          id?: string
-          invalid_rows_count?: number
-          message?: string | null
-          missing_columns?: Json | null
-          status?: Database["public"]["Enums"]["import_status"]
-        }
-        Update: {
-          created_at?: string
-          dataset_id?: string
-          id?: string
-          invalid_rows_count?: number
-          message?: string | null
-          missing_columns?: Json | null
-          status?: Database["public"]["Enums"]["import_status"]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "imports_log_dataset_id_fkey"
-            columns: ["dataset_id"]
-            isOneToOne: false
-            referencedRelation: "datasets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      kpi_targets: {
-        Row: {
-          created_at: string
-          id: string
-          period_end: string
-          period_start: string
-          period_type: Database["public"]["Enums"]["period_type"]
-          project_id: string
-          target_avg_er: number | null
-          target_followers: number | null
-          target_total_reach: number | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          period_end: string
-          period_start: string
-          period_type: Database["public"]["Enums"]["period_type"]
-          project_id: string
-          target_avg_er?: number | null
-          target_followers?: number | null
-          target_total_reach?: number | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          period_end?: string
-          period_start?: string
-          period_type?: Database["public"]["Enums"]["period_type"]
-          project_id?: string
-          target_avg_er?: number | null
-          target_followers?: number | null
-          target_total_reach?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kpi_targets_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      notes: {
-        Row: {
-          content: string
-          created_at: string
-          dataset_id: string | null
-          id: string
-          project_id: string
-          scope_key: string | null
-          scope_type: Database["public"]["Enums"]["scope_type"]
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          dataset_id?: string | null
-          id?: string
-          project_id: string
-          scope_key?: string | null
-          scope_type: Database["public"]["Enums"]["scope_type"]
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          dataset_id?: string | null
-          id?: string
-          project_id?: string
-          scope_key?: string | null
-          scope_type?: Database["public"]["Enums"]["scope_type"]
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notes_dataset_id_fkey"
-            columns: ["dataset_id"]
-            isOneToOne: false
-            referencedRelation: "datasets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notes_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      platforms: {
-        Row: {
-          color: string
-          created_at: string
-          display_name: string
-          id: string
-          is_active: boolean
-          name: string
-        }
-        Insert: {
-          color?: string
-          created_at?: string
-          display_name: string
-          id?: string
-          is_active?: boolean
-          name: string
-        }
-        Update: {
-          color?: string
-          created_at?: string
-          display_name?: string
-          id?: string
-          is_active?: boolean
-          name?: string
-        }
-        Relationships: []
-      }
-      posts: {
-        Row: {
-          campaign_id: string | null
-          caption: string | null
-          comments: number
-          content_type_id: string
-          created_at: string
-          dataset_id: string
-          engagement: number | null
-          engagement_rate: number | null
-          followers: number
-          id: string
-          likes: number
-          platform_id: string
-          post_id: string
-          posted_at: string
-          project_id: string
-          reach: number
-          saved: number
-          shares: number
-          views: number
-        }
-        Insert: {
-          campaign_id?: string | null
-          caption?: string | null
-          comments?: number
-          content_type_id: string
-          created_at?: string
-          dataset_id: string
-          engagement?: number | null
-          engagement_rate?: number | null
-          followers?: number
-          id?: string
-          likes?: number
-          platform_id: string
-          post_id: string
-          posted_at: string
-          project_id: string
-          reach?: number
-          saved?: number
-          shares?: number
-          views?: number
-        }
-        Update: {
-          campaign_id?: string | null
-          caption?: string | null
-          comments?: number
-          content_type_id?: string
-          created_at?: string
-          dataset_id?: string
-          engagement?: number | null
-          engagement_rate?: number | null
-          followers?: number
-          id?: string
-          likes?: number
-          platform_id?: string
-          post_id?: string
-          posted_at?: string
-          project_id?: string
-          reach?: number
-          saved?: number
-          shares?: number
-          views?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "posts_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "posts_content_type_id_fkey"
-            columns: ["content_type_id"]
-            isOneToOne: false
-            referencedRelation: "content_types"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "posts_dataset_id_fkey"
-            columns: ["dataset_id"]
-            isOneToOne: false
-            referencedRelation: "datasets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "posts_platform_id_fkey"
-            columns: ["platform_id"]
-            isOneToOne: false
-            referencedRelation: "platforms"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "posts_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      profiles: {
-        Row: {
-          created_at: string
-          full_name: string | null
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-        }
-        Insert: {
-          created_at?: string
-          full_name?: string | null
-          id: string
-          role?: Database["public"]["Enums"]["app_role"]
-        }
-        Update: {
-          created_at?: string
-          full_name?: string | null
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-        }
-        Relationships: []
-      }
-      project_members: {
-        Row: {
-          created_at: string
-          id: string
-          project_id: string
-          role_in_project: Database["public"]["Enums"]["project_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          project_id: string
-          role_in_project?: Database["public"]["Enums"]["project_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          project_id?: string
-          role_in_project?: Database["public"]["Enums"]["project_role"]
-          user_id?: string
+          id_pengguna?: string
+          id_proyek?: string
+          peran_dalam_proyek?: Database["public"]["Enums"]["project_role"]
         }
         Relationships: [
           {
             foreignKeyName: "project_members_project_id_fkey"
-            columns: ["project_id"]
+            columns: ["id_proyek"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "proyek"
             referencedColumns: ["id"]
           },
         ]
       }
-      projects: {
+      catatan: {
         Row: {
           created_at: string
-          description: string | null
           id: string
-          name: string
-          user_id: string
+          id_dataset: string | null
+          id_pengguna: string
+          id_proyek: string
+          isi_catatan: string
+          jenis_scope: Database["public"]["Enums"]["scope_type"]
+          kunci_scope: string | null
         }
         Insert: {
           created_at?: string
-          description?: string | null
           id?: string
-          name: string
-          user_id: string
+          id_dataset?: string | null
+          id_pengguna: string
+          id_proyek: string
+          isi_catatan: string
+          jenis_scope: Database["public"]["Enums"]["scope_type"]
+          kunci_scope?: string | null
         }
         Update: {
           created_at?: string
-          description?: string | null
           id?: string
-          name?: string
-          user_id?: string
+          id_dataset?: string | null
+          id_pengguna?: string
+          id_proyek?: string
+          isi_catatan?: string
+          jenis_scope?: Database["public"]["Enums"]["scope_type"]
+          kunci_scope?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notes_dataset_id_fkey"
+            columns: ["id_dataset"]
+            isOneToOne: false
+            referencedRelation: "dataset"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_project_id_fkey"
+            columns: ["id_proyek"]
+            isOneToOne: false
+            referencedRelation: "proyek"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      saved_filters: {
+      dataset: {
         Row: {
           created_at: string
-          filter_json: Json
+          dataset_aktif: boolean
           id: string
-          name: string
-          page: string
-          project_id: string
-          user_id: string
+          id_proyek: string
+          jenis_sumber_dataset: Database["public"]["Enums"]["source_type"]
+          jumlah_baris_dataset: number
+          lokasi_berkas_dataset: string | null
+          nama_dataset: string
         }
         Insert: {
           created_at?: string
-          filter_json: Json
+          dataset_aktif?: boolean
           id?: string
-          name: string
-          page: string
-          project_id: string
-          user_id: string
+          id_proyek: string
+          jenis_sumber_dataset?: Database["public"]["Enums"]["source_type"]
+          jumlah_baris_dataset?: number
+          lokasi_berkas_dataset?: string | null
+          nama_dataset: string
         }
         Update: {
           created_at?: string
-          filter_json?: Json
+          dataset_aktif?: boolean
           id?: string
-          name?: string
-          page?: string
-          project_id?: string
-          user_id?: string
+          id_proyek?: string
+          jenis_sumber_dataset?: Database["public"]["Enums"]["source_type"]
+          jumlah_baris_dataset?: number
+          lokasi_berkas_dataset?: string | null
+          nama_dataset?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "datasets_project_id_fkey"
+            columns: ["id_proyek"]
+            isOneToOne: false
+            referencedRelation: "proyek"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      filter_tersimpan: {
+        Row: {
+          created_at: string
+          halaman: string
+          id: string
+          id_pengguna: string
+          id_proyek: string
+          nama_filter: string
+          nilai_filter_json: Json
+        }
+        Insert: {
+          created_at?: string
+          halaman: string
+          id?: string
+          id_pengguna: string
+          id_proyek: string
+          nama_filter: string
+          nilai_filter_json: Json
+        }
+        Update: {
+          created_at?: string
+          halaman?: string
+          id?: string
+          id_pengguna?: string
+          id_proyek?: string
+          nama_filter?: string
+          nilai_filter_json?: Json
         }
         Relationships: [
           {
             foreignKeyName: "saved_filters_project_id_fkey"
-            columns: ["project_id"]
+            columns: ["id_proyek"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "proyek"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jenis_konten: {
+        Row: {
+          created_at: string
+          id: string
+          jenis_konten_aktif: boolean
+          kode_jenis_konten: string
+          nama_jenis_konten: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          jenis_konten_aktif?: boolean
+          kode_jenis_konten: string
+          nama_jenis_konten: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          jenis_konten_aktif?: boolean
+          kode_jenis_konten?: string
+          nama_jenis_konten?: string
+        }
+        Relationships: []
+      }
+      kampanye: {
+        Row: {
+          catatan_kampanye: string | null
+          created_at: string
+          id: string
+          id_proyek: string
+          nama_kampanye: string
+          tanggal_mulai_kampanye: string | null
+          tanggal_selesai_kampanye: string | null
+        }
+        Insert: {
+          catatan_kampanye?: string | null
+          created_at?: string
+          id?: string
+          id_proyek: string
+          nama_kampanye: string
+          tanggal_mulai_kampanye?: string | null
+          tanggal_selesai_kampanye?: string | null
+        }
+        Update: {
+          catatan_kampanye?: string | null
+          created_at?: string
+          id?: string
+          id_proyek?: string
+          nama_kampanye?: string
+          tanggal_mulai_kampanye?: string | null
+          tanggal_selesai_kampanye?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_project_id_fkey"
+            columns: ["id_proyek"]
+            isOneToOne: false
+            referencedRelation: "proyek"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      log_impor: {
+        Row: {
+          created_at: string
+          id: string
+          id_dataset: string
+          jumlah_baris_tidak_valid: number
+          kolom_hilang: Json | null
+          pesan: string | null
+          status_impor: Database["public"]["Enums"]["import_status"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          id_dataset: string
+          jumlah_baris_tidak_valid?: number
+          kolom_hilang?: Json | null
+          pesan?: string | null
+          status_impor?: Database["public"]["Enums"]["import_status"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          id_dataset?: string
+          jumlah_baris_tidak_valid?: number
+          kolom_hilang?: Json | null
+          pesan?: string | null
+          status_impor?: Database["public"]["Enums"]["import_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imports_log_dataset_id_fkey"
+            columns: ["id_dataset"]
+            isOneToOne: false
+            referencedRelation: "dataset"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform: {
+        Row: {
+          created_at: string
+          id: string
+          kode_platform: string
+          nama_platform: string
+          platform_aktif: boolean
+          warna_platform: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kode_platform: string
+          nama_platform: string
+          platform_aktif?: boolean
+          warna_platform?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kode_platform?: string
+          nama_platform?: string
+          platform_aktif?: boolean
+          warna_platform?: string
+        }
+        Relationships: []
+      }
+      postingan: {
+        Row: {
+          created_at: string
+          engagement_rate_persen: number | null
+          id: string
+          id_dataset: string
+          id_jenis_konten: string
+          id_kampanye: string | null
+          id_platform: string
+          id_proyek: string
+          jumlah_followers: number
+          jumlah_komentar: number
+          jumlah_likes: number
+          jumlah_reach: number
+          jumlah_saved: number
+          jumlah_shares: number
+          jumlah_views: number
+          kode_postingan: string
+          teks_caption: string | null
+          total_engagement: number | null
+          waktu_diposting: string
+        }
+        Insert: {
+          created_at?: string
+          engagement_rate_persen?: number | null
+          id?: string
+          id_dataset: string
+          id_jenis_konten: string
+          id_kampanye?: string | null
+          id_platform: string
+          id_proyek: string
+          jumlah_followers?: number
+          jumlah_komentar?: number
+          jumlah_likes?: number
+          jumlah_reach?: number
+          jumlah_saved?: number
+          jumlah_shares?: number
+          jumlah_views?: number
+          kode_postingan: string
+          teks_caption?: string | null
+          total_engagement?: number | null
+          waktu_diposting: string
+        }
+        Update: {
+          created_at?: string
+          engagement_rate_persen?: number | null
+          id?: string
+          id_dataset?: string
+          id_jenis_konten?: string
+          id_kampanye?: string | null
+          id_platform?: string
+          id_proyek?: string
+          jumlah_followers?: number
+          jumlah_komentar?: number
+          jumlah_likes?: number
+          jumlah_reach?: number
+          jumlah_saved?: number
+          jumlah_shares?: number
+          jumlah_views?: number
+          kode_postingan?: string
+          teks_caption?: string | null
+          total_engagement?: number | null
+          waktu_diposting?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_campaign_id_fkey"
+            columns: ["id_kampanye"]
+            isOneToOne: false
+            referencedRelation: "kampanye"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_content_type_id_fkey"
+            columns: ["id_jenis_konten"]
+            isOneToOne: false
+            referencedRelation: "jenis_konten"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_dataset_id_fkey"
+            columns: ["id_dataset"]
+            isOneToOne: false
+            referencedRelation: "dataset"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_platform_id_fkey"
+            columns: ["id_platform"]
+            isOneToOne: false
+            referencedRelation: "platform"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_project_id_fkey"
+            columns: ["id_proyek"]
+            isOneToOne: false
+            referencedRelation: "proyek"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profil: {
+        Row: {
+          created_at: string
+          id: string
+          nama_lengkap: string | null
+          peran: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          nama_lengkap?: string | null
+          peran?: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nama_lengkap?: string | null
+          peran?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      proyek: {
+        Row: {
+          created_at: string
+          deskripsi_proyek: string | null
+          id: string
+          id_pemilik: string
+          nama_proyek: string
+        }
+        Insert: {
+          created_at?: string
+          deskripsi_proyek?: string | null
+          id?: string
+          id_pemilik: string
+          nama_proyek: string
+        }
+        Update: {
+          created_at?: string
+          deskripsi_proyek?: string | null
+          id?: string
+          id_pemilik?: string
+          nama_proyek?: string
+        }
+        Relationships: []
+      }
+      target_kpi: {
+        Row: {
+          created_at: string
+          id: string
+          id_proyek: string
+          jenis_periode: Database["public"]["Enums"]["period_type"]
+          tanggal_mulai_periode: string
+          tanggal_selesai_periode: string
+          target_jumlah_followers: number | null
+          target_rata_rata_er: number | null
+          target_total_jangkauan: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          id_proyek: string
+          jenis_periode: Database["public"]["Enums"]["period_type"]
+          tanggal_mulai_periode: string
+          tanggal_selesai_periode: string
+          target_jumlah_followers?: number | null
+          target_rata_rata_er?: number | null
+          target_total_jangkauan?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          id_proyek?: string
+          jenis_periode?: Database["public"]["Enums"]["period_type"]
+          tanggal_mulai_periode?: string
+          tanggal_selesai_periode?: string
+          target_jumlah_followers?: number | null
+          target_rata_rata_er?: number | null
+          target_total_jangkauan?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_targets_project_id_fkey"
+            columns: ["id_proyek"]
+            isOneToOne: false
+            referencedRelation: "proyek"
             referencedColumns: ["id"]
           },
         ]
