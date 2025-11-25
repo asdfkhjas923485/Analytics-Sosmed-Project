@@ -328,6 +328,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_pertanyaan_pengguna"
+            columns: ["id_pengguna"]
+            isOneToOne: false
+            referencedRelation: "user_display_info"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_proyek"
             columns: ["id_proyek"]
             isOneToOne: false
@@ -556,9 +563,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_display_info: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          nama_lengkap: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          nama_lengkap?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          nama_lengkap?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      get_user_display_name: { Args: { user_id: string }; Returns: string }
       has_project_access: { Args: { project_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
     }
