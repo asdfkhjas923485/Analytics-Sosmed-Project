@@ -43,6 +43,7 @@ const Bantuan = () => {
   const [submitting, setSubmitting] = useState(false);
   const [judul, setJudul] = useState("");
   const [pertanyaan, setPertanyaan] = useState("");
+  const [nama, setNama] = useState("");
   const [filter, setFilter] = useState<"semua" | "menunggu" | "dijawab">("semua");
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
   const [selectedQuestionForRating, setSelectedQuestionForRating] = useState<string | null>(null);
@@ -73,6 +74,12 @@ const Bantuan = () => {
       subscribeToChanges();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (profile?.nama_lengkap) {
+      setNama(profile.nama_lengkap);
+    }
+  }, [profile]);
 
   const fetchQuestions = async () => {
     setLoading(true);
@@ -123,6 +130,11 @@ const Bantuan = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!nama.trim()) {
+      toast.error("Nama harus diisi");
+      return;
+    }
+
     if (!judul.trim() || !pertanyaan.trim()) {
       toast.error("Judul dan pertanyaan harus diisi");
       return;
@@ -135,6 +147,17 @@ const Bantuan = () => {
 
     setSubmitting(true);
     try {
+      // Update profile name if not set
+      if (!profile?.nama_lengkap || profile.nama_lengkap !== nama.trim()) {
+        const { error: profileError } = await supabase
+          .from("profil")
+          .update({ nama_lengkap: nama.trim() })
+          .eq("id", user?.id);
+
+        if (profileError) throw profileError;
+      }
+
+      // Insert question
       const { error } = await supabase.from("pertanyaan").insert({
         id_pengguna: user?.id,
         id_proyek: selectedProject.id,
@@ -225,15 +248,21 @@ const Bantuan = () => {
             <CardDescription>Tim kami akan menjawab pertanyaan Anda secepatnya</CardDescription>
           </CardHeader>
           <CardContent>
-            {!profile?.nama_lengkap && (
-              <Alert className="mb-4">
-                <AlertDescription>
-                  Anda belum mengisi nama lengkap di profil. Pertanyaan akan ditampilkan sebagai "Unknown". 
-                  <a href="/profile" className="underline ml-1">Update profil</a>
-                </AlertDescription>
-              </Alert>
-            )}
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="nama">Nama Anda</Label>
+                <Input
+                  id="nama"
+                  value={nama}
+                  onChange={(e) => setNama(e.target.value)}
+                  placeholder="Masukkan nama Anda"
+                  maxLength={100}
+                  required
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Nama akan ditampilkan di riwayat pertanyaan dan rating
+                </p>
+              </div>
               <div>
                 <Label htmlFor="judul">Judul Pertanyaan</Label>
                 <Input
@@ -242,6 +271,7 @@ const Bantuan = () => {
                   onChange={(e) => setJudul(e.target.value)}
                   placeholder="Contoh: Bagaimana cara import data CSV?"
                   maxLength={200}
+                  required
                 />
               </div>
               <div>
@@ -253,6 +283,7 @@ const Bantuan = () => {
                   placeholder="Jelaskan pertanyaan Anda secara detail..."
                   rows={5}
                   maxLength={2000}
+                  required
                 />
               </div>
               <Button type="submit" disabled={submitting}>
