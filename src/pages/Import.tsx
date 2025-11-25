@@ -84,8 +84,8 @@ const Import = () => {
       const text = await csvFile.text();
       const { lines, getColumnIndex } = parseCSV(text);
       
-      const { data: platforms } = await supabase.from("platforms").select("*");
-      const { data: contentTypes } = await supabase.from("content_types").select("*");
+      const { data: platforms } = await supabase.from("platform").select("*");
+      const { data: contentTypes } = await supabase.from("jenis_konten").select("*");
 
       const preview = {
         fileName: csvFile.name,
@@ -109,8 +109,8 @@ const Import = () => {
         const platformName = values[getColumnIndex("platform")]?.trim().toLowerCase();
         const contentTypeName = values[getColumnIndex("content_type")]?.trim().toLowerCase();
         
-        const platform = platforms?.find((p) => p.name.toLowerCase() === platformName);
-        const contentType = contentTypes?.find((c) => c.name.toLowerCase() === contentTypeName);
+        const platform = platforms?.find((p) => p.kode_platform.toLowerCase() === platformName);
+        const contentType = contentTypes?.find((c) => c.kode_jenis_konten.toLowerCase() === contentTypeName);
 
         if (!platform) {
           errors.push(`Baris ${i}: Platform "${platformName}" tidak ditemukan`);
@@ -150,27 +150,27 @@ const Import = () => {
 
       // Deactivate all existing datasets first
       await supabase
-        .from("datasets")
-        .update({ is_active: false })
-        .eq("project_id", selectedProject.id);
+        .from("dataset")
+        .update({ dataset_aktif: false })
+        .eq("id_proyek", selectedProject.id);
 
       // Create new dataset and set as active
       const { data: dataset, error: datasetError } = await supabase
-        .from("datasets")
+        .from("dataset")
         .insert({
-          project_id: selectedProject.id,
-          name: csvFile.name,
-          source_type: "upload_csv",
-          row_count: lines.length - 1,
-          is_active: true,
+          id_proyek: selectedProject.id,
+          nama_dataset: csvFile.name,
+          jenis_sumber_dataset: "upload_csv",
+          jumlah_baris_dataset: lines.length - 1,
+          dataset_aktif: true,
         })
         .select()
         .single();
 
       if (datasetError) throw datasetError;
 
-      const { data: platforms } = await supabase.from("platforms").select("*");
-      const { data: contentTypes } = await supabase.from("content_types").select("*");
+      const { data: platforms } = await supabase.from("platform").select("*");
+      const { data: contentTypes } = await supabase.from("jenis_konten").select("*");
 
       const posts = [];
       const errors = [];
@@ -181,8 +181,8 @@ const Import = () => {
         const platformName = values[getColumnIndex("platform")]?.trim().toLowerCase();
         const contentTypeName = values[getColumnIndex("content_type")]?.trim().toLowerCase();
         
-        const platform = platforms?.find((p) => p.name.toLowerCase() === platformName);
-        const contentType = contentTypes?.find((c) => c.name.toLowerCase() === contentTypeName);
+        const platform = platforms?.find((p) => p.kode_platform.toLowerCase() === platformName);
+        const contentType = contentTypes?.find((c) => c.kode_jenis_konten.toLowerCase() === contentTypeName);
 
         if (!platform) {
           errors.push(`Baris ${i}: Platform "${platformName}" tidak ditemukan`);
@@ -201,20 +201,20 @@ const Import = () => {
         const saved = parseInt(values[getColumnIndex("saved")]) || 0;
 
         posts.push({
-          project_id: selectedProject.id,
-          dataset_id: dataset.id,
-          platform_id: platform.id,
-          content_type_id: contentType.id,
-          post_id: values[getColumnIndex("post_id")]?.trim() || `POST-${i}`,
-          posted_at: new Date(values[getColumnIndex("posted_at")]?.trim()).toISOString(),
-          reach: parseInt(values[getColumnIndex("reach")]) || 0,
-          likes,
-          comments,
-          shares,
-          saved,
-          views: parseInt(values[getColumnIndex("views")]) || 0,
-          followers: parseInt(values[getColumnIndex("followers")]) || 0,
-          caption: values[getColumnIndex("caption")]?.trim() || "",
+          id_proyek: selectedProject.id,
+          id_dataset: dataset.id,
+          id_platform: platform.id,
+          id_jenis_konten: contentType.id,
+          kode_postingan: values[getColumnIndex("post_id")]?.trim() || `POST-${i}`,
+          waktu_diposting: new Date(values[getColumnIndex("posted_at")]?.trim()).toISOString(),
+          jumlah_reach: parseInt(values[getColumnIndex("reach")]) || 0,
+          jumlah_likes: likes,
+          jumlah_komentar: comments,
+          jumlah_shares: shares,
+          jumlah_saved: saved,
+          jumlah_views: parseInt(values[getColumnIndex("views")]) || 0,
+          jumlah_followers: parseInt(values[getColumnIndex("followers")]) || 0,
+          teks_caption: values[getColumnIndex("caption")]?.trim() || "",
         });
       }
 
@@ -225,28 +225,28 @@ const Import = () => {
       console.log("Attempting to insert posts:", posts);
       
       const { data: insertedPosts, error: postsError } = await supabase
-        .from("posts")
+        .from("postingan")
         .insert(posts)
         .select();
 
       if (postsError) {
         console.error("Error inserting posts:", postsError);
-        await supabase.from("imports_log").insert({ 
-          dataset_id: dataset.id, 
-          status: "failed", 
-          message: `Failed to insert posts: ${postsError.message}`,
-          invalid_rows_count: posts.length
+        await supabase.from("log_impor").insert({ 
+          id_dataset: dataset.id, 
+          status_impor: "failed", 
+          pesan: `Failed to insert posts: ${postsError.message}`,
+          jumlah_baris_tidak_valid: posts.length
         });
         throw new Error(`Gagal menyimpan posts: ${postsError.message}`);
       }
 
       console.log("Successfully inserted posts:", insertedPosts);
 
-      await supabase.from("imports_log").insert({ 
-        dataset_id: dataset.id, 
-        status: "success", 
-        message: `Imported ${insertedPosts?.length || posts.length} posts`,
-        invalid_rows_count: errors.length
+      await supabase.from("log_impor").insert({ 
+        id_dataset: dataset.id, 
+        status_impor: "success", 
+        pesan: `Imported ${insertedPosts?.length || posts.length} posts`,
+        jumlah_baris_tidak_valid: errors.length
       });
       
       toast.success(`Berhasil import ${posts.length} posts! Dataset sekarang aktif dan data dapat dilihat di Dashboard.${errors.length > 0 ? ` (${errors.length} baris dilewati)` : ""}`);
@@ -264,7 +264,7 @@ const Import = () => {
       // If dataset was created but posts failed, delete the empty dataset
       if (error.message?.includes("Gagal menyimpan posts")) {
         try {
-          await supabase.from("datasets").delete().eq("name", csvFile?.name || "");
+          await supabase.from("dataset").delete().eq("nama_dataset", csvFile?.name || "");
         } catch (cleanupError) {
           console.error("Failed to cleanup dataset:", cleanupError);
         }
@@ -300,34 +300,34 @@ const Import = () => {
 
       // Deactivate all existing datasets first
       await supabase
-        .from("datasets")
-        .update({ is_active: false })
-        .eq("project_id", selectedProject.id);
+        .from("dataset")
+        .update({ dataset_aktif: false })
+        .eq("id_proyek", selectedProject.id);
 
       // Create new dataset and set as active
       const { data: dataset } = await supabase
-        .from("datasets")
+        .from("dataset")
         .insert({
-          project_id: selectedProject.id,
-          name: `Google Sheets - ${new Date().toLocaleDateString()}`,
-          source_type: "google_sheet",
-          storage_path: sheetsUrl,
-          row_count: lines.length - 1,
-          is_active: true,
+          id_proyek: selectedProject.id,
+          nama_dataset: `Google Sheets - ${new Date().toLocaleDateString()}`,
+          jenis_sumber_dataset: "google_sheet",
+          lokasi_berkas_dataset: sheetsUrl,
+          jumlah_baris_dataset: lines.length - 1,
+          dataset_aktif: true,
         })
         .select()
         .single();
 
-      const { data: platforms } = await supabase.from("platforms").select("*");
-      const { data: contentTypes } = await supabase.from("content_types").select("*");
+      const { data: platforms } = await supabase.from("platform").select("*");
+      const { data: contentTypes } = await supabase.from("jenis_konten").select("*");
 
       const posts = [];
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(",");
         if (values.length < headers.length) continue;
 
-        const platform = platforms?.find((p) => p.name.toLowerCase() === values[headers.indexOf("platform")]?.trim().toLowerCase());
-        const contentType = contentTypes?.find((c) => c.name.toLowerCase() === values[headers.indexOf("content_type")]?.trim().toLowerCase());
+        const platform = platforms?.find((p) => p.kode_platform.toLowerCase() === values[headers.indexOf("platform")]?.trim().toLowerCase());
+        const contentType = contentTypes?.find((c) => c.kode_jenis_konten.toLowerCase() === values[headers.indexOf("content_type")]?.trim().toLowerCase());
         if (!platform || !contentType) continue;
 
         const reach = parseInt(values[headers.indexOf("reach")]) || 0;
@@ -338,22 +338,26 @@ const Import = () => {
         const engagement = likes + comments + shares + saved;
 
         posts.push({
-          project_id: selectedProject.id,
-          dataset_id: dataset!.id,
-          platform_id: platform.id,
-          content_type_id: contentType.id,
-          post_id: values[headers.indexOf("post_id")]?.trim() || `POST-${i}`,
-          posted_at: new Date(values[headers.indexOf("posted_at")]?.trim()).toISOString(),
-          reach, likes, comments, shares, saved,
-          views: parseInt(values[headers.indexOf("views")]) || 0,
-          followers: parseInt(values[headers.indexOf("followers")]) || 0,
-          engagement,
-          engagement_rate: reach > 0 ? parseFloat(((engagement / reach) * 100).toFixed(2)) : 0,
-          caption: values[headers.indexOf("caption")]?.trim() || "",
+          id_proyek: selectedProject.id,
+          id_dataset: dataset!.id,
+          id_platform: platform.id,
+          id_jenis_konten: contentType.id,
+          kode_postingan: values[headers.indexOf("post_id")]?.trim() || `POST-${i}`,
+          waktu_diposting: new Date(values[headers.indexOf("posted_at")]?.trim()).toISOString(),
+          jumlah_reach: reach,
+          jumlah_likes: likes,
+          jumlah_komentar: comments,
+          jumlah_shares: shares,
+          jumlah_saved: saved,
+          jumlah_views: parseInt(values[headers.indexOf("views")]) || 0,
+          jumlah_followers: parseInt(values[headers.indexOf("followers")]) || 0,
+          total_engagement: engagement,
+          engagement_rate_persen: reach > 0 ? parseFloat(((engagement / reach) * 100).toFixed(2)) : 0,
+          teks_caption: values[headers.indexOf("caption")]?.trim() || "",
         });
       }
 
-      await supabase.from("posts").insert(posts);
+      await supabase.from("postingan").insert(posts);
       toast.success(`Berhasil import ${posts.length} posts!`);
       await refreshDatasets();
       setSheetsUrl("");
@@ -375,22 +379,22 @@ const Import = () => {
     try {
       // Check if sample dataset already exists
       const { data: existingSample } = await supabase
-        .from("datasets")
+        .from("dataset")
         .select("*")
-        .eq("project_id", selectedProject.id)
-        .eq("source_type", "sample")
+        .eq("id_proyek", selectedProject.id)
+        .eq("jenis_sumber_dataset", "sample")
         .single();
 
       if (existingSample) {
         // Activate existing sample dataset
         await supabase
-          .from("datasets")
-          .update({ is_active: false })
-          .eq("project_id", selectedProject.id);
+          .from("dataset")
+          .update({ dataset_aktif: false })
+          .eq("id_proyek", selectedProject.id);
 
         await supabase
-          .from("datasets")
-          .update({ is_active: true })
+          .from("dataset")
+          .update({ dataset_aktif: true })
           .eq("id", existingSample.id);
 
         toast.success("Dataset sample berhasil diaktifkan");
@@ -401,13 +405,13 @@ const Import = () => {
 
       // Create sample dataset
       const { data: newDataset, error: datasetError } = await supabase
-        .from("datasets")
+        .from("dataset")
         .insert({
-          project_id: selectedProject.id,
-          name: "Sample Dataset Mei-Juni 2025",
-          source_type: "sample",
-          is_active: true,
-          row_count: 50
+          id_proyek: selectedProject.id,
+          nama_dataset: "Sample Dataset Mei-Juni 2025",
+          jenis_sumber_dataset: "sample",
+          dataset_aktif: true,
+          jumlah_baris_dataset: 50
         })
         .select()
         .single();
@@ -416,14 +420,14 @@ const Import = () => {
 
       // Deactivate other datasets
       await supabase
-        .from("datasets")
-        .update({ is_active: false })
-        .eq("project_id", selectedProject.id)
+        .from("dataset")
+        .update({ dataset_aktif: false })
+        .eq("id_proyek", selectedProject.id)
         .neq("id", newDataset.id);
 
       // Get platform and content type IDs
-      const { data: platforms } = await supabase.from("platforms").select("*");
-      const { data: contentTypes } = await supabase.from("content_types").select("*");
+      const { data: platforms } = await supabase.from("platform").select("*");
+      const { data: contentTypes } = await supabase.from("jenis_konten").select("*");
 
       if (!platforms || !contentTypes) throw new Error("Failed to fetch master data");
 
@@ -449,37 +453,37 @@ const Import = () => {
         const followers = Math.floor(Math.random() * 200) + 700;
 
         samplePosts.push({
-          project_id: selectedProject.id,
-          dataset_id: newDataset.id,
-          platform_id: platform.id,
-          content_type_id: contentType.id,
-          post_id: `P${String(i).padStart(3, "0")}`,
-          posted_at: randomDate.toISOString(),
-          caption: `Sample post ${i}`,
-          likes,
-          comments,
-          shares,
-          saved,
-          views,
-          reach,
-          followers
+          id_proyek: selectedProject.id,
+          id_dataset: newDataset.id,
+          id_platform: platform.id,
+          id_jenis_konten: contentType.id,
+          kode_postingan: `P${String(i).padStart(3, "0")}`,
+          waktu_diposting: randomDate.toISOString(),
+          teks_caption: `Sample post ${i}`,
+          jumlah_likes: likes,
+          jumlah_komentar: comments,
+          jumlah_shares: shares,
+          jumlah_saved: saved,
+          jumlah_views: views,
+          jumlah_reach: reach,
+          jumlah_followers: followers
         });
       }
 
       const { error: postsError } = await supabase
-        .from("posts")
+        .from("postingan")
         .insert(samplePosts);
 
       if (postsError) throw postsError;
 
       // Create import log
       await supabase
-        .from("imports_log")
+        .from("log_impor")
         .insert({
-          dataset_id: newDataset.id,
-          status: "success",
-          message: "Sample data generated successfully",
-          invalid_rows_count: 0
+          id_dataset: newDataset.id,
+          status_impor: "success",
+          pesan: "Sample data generated successfully",
+          jumlah_baris_tidak_valid: 0
         });
 
       toast.success("Data sample berhasil dibuat!");
@@ -497,8 +501,8 @@ const Import = () => {
     if (!selectedProject) return;
 
     try {
-      await supabase.from("datasets").update({ is_active: false }).eq("project_id", selectedProject.id);
-      await supabase.from("datasets").update({ is_active: true }).eq("id", datasetId);
+      await supabase.from("dataset").update({ dataset_aktif: false }).eq("id_proyek", selectedProject.id);
+      await supabase.from("dataset").update({ dataset_aktif: true }).eq("id", datasetId);
       toast.success("Dataset aktif berhasil diubah");
       await refreshDatasets();
     } catch (error: any) {
@@ -513,13 +517,13 @@ const Import = () => {
       setUploading(true);
       
       // Delete related posts first
-      await supabase.from("posts").delete().eq("dataset_id", datasetToDelete);
+      await supabase.from("postingan").delete().eq("id_dataset", datasetToDelete);
       
       // Delete import logs
-      await supabase.from("imports_log").delete().eq("dataset_id", datasetToDelete);
+      await supabase.from("log_impor").delete().eq("id_dataset", datasetToDelete);
       
       // Delete dataset
-      await supabase.from("datasets").delete().eq("id", datasetToDelete);
+      await supabase.from("dataset").delete().eq("id", datasetToDelete);
       
       toast.success("Dataset berhasil dihapus");
       await refreshDatasets();
@@ -554,13 +558,13 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
       setUploading(true);
       
       const { data: posts, error } = await supabase
-        .from("posts")
+        .from("postingan")
         .select(`
           *,
-          platforms:platform_id(name),
-          content_types:content_type_id(name)
+          platform:id_platform(kode_platform),
+          jenis_konten:id_jenis_konten(kode_jenis_konten)
         `)
-        .eq("dataset_id", datasetId);
+        .eq("id_dataset", datasetId);
 
       if (error) throw error;
       if (!posts || posts.length === 0) {
@@ -630,7 +634,7 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
         <div>
           <h1 className="text-3xl font-bold text-foreground">Import Data</h1>
           <p className="text-muted-foreground mt-1">
-            Kelola dataset CSV untuk project <strong>{selectedProject.name}</strong>
+            Kelola dataset CSV untuk project <strong>{selectedProject.nama_proyek}</strong>
           </p>
         </div>
 
@@ -789,13 +793,13 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
                 <TableBody>
                   {datasets.map((dataset) => (
                     <TableRow key={dataset.id}>
-                      <TableCell className="font-medium">{dataset.name}</TableCell>
+                      <TableCell className="font-medium">{dataset.nama_dataset}</TableCell>
                       <TableCell>
                         {new Date(dataset.created_at).toLocaleDateString("id-ID")}
                       </TableCell>
-                      <TableCell>{dataset.row_count}</TableCell>
+                      <TableCell>{dataset.jumlah_baris_dataset}</TableCell>
                       <TableCell>
-                        {dataset.is_active ? (
+                        {dataset.dataset_aktif ? (
                           <Badge className="bg-success">Aktif</Badge>
                         ) : (
                           <Badge variant="outline">Tidak Aktif</Badge>
@@ -803,7 +807,7 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          {!dataset.is_active && (
+                          {!dataset.dataset_aktif && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -815,7 +819,7 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleExportDataset(dataset.id, dataset.name)}
+                            onClick={() => handleExportDataset(dataset.id, dataset.nama_dataset)}
                             disabled={uploading}
                             className="gap-1"
                           >

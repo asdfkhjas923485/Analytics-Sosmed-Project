@@ -30,20 +30,20 @@ const Audiens = () => {
       if (!selectedProject || !activeDataset) return;
       setLoading(true);
       try {
-        const { data: posts, error } = await supabase.from("posts").select("*").eq("project_id", selectedProject.id).eq("dataset_id", activeDataset.id).order("posted_at", { ascending: true });
+        const { data: posts, error } = await supabase.from("postingan").select("*").eq("id_proyek", selectedProject.id).eq("id_dataset", activeDataset.id).order("waktu_diposting", { ascending: true });
         if (error) throw error;
         if (posts && posts.length > 0) {
           const dailyMap = new Map<string, number[]>();
           posts.forEach(post => {
-            const date = format(new Date(post.posted_at), "yyyy-MM-dd");
+            const date = format(new Date(post.waktu_diposting), "yyyy-MM-dd");
             if (!dailyMap.has(date)) dailyMap.set(date, []);
-            dailyMap.get(date)!.push(post.followers);
+            dailyMap.get(date)!.push(post.jumlah_followers);
           });
           const trend = Array.from(dailyMap.entries()).map(([date, followers]) => ({ date, followers: Math.round(followers.reduce((a, b) => a + b, 0) / followers.length) }));
           setFollowersTrend(trend);
           const weeklyMap = new Map<string, number>();
           posts.forEach(post => {
-            const date = new Date(post.posted_at);
+            const date = new Date(post.waktu_diposting);
             const weekStart = new Date(date);
             weekStart.setDate(date.getDate() - date.getDay());
             const weekKey = format(weekStart, "yyyy-MM-dd");
@@ -51,14 +51,14 @@ const Audiens = () => {
           });
           const weekly = Array.from(weeklyMap.entries()).map(([week, count]) => ({ week: format(new Date(week), "dd MMM"), count })).sort((a, b) => a.week.localeCompare(b.week));
           setWeeklyPosts(weekly);
-          const scatter = posts.map(p => ({ reach: p.reach, engagement: p.engagement || 0 }));
+          const scatter = posts.map(p => ({ reach: p.jumlah_reach, engagement: p.total_engagement || 0 }));
           setScatterData(scatter);
           const n = posts.length;
-          const sumX = posts.reduce((sum, p) => sum + p.reach, 0);
-          const sumY = posts.reduce((sum, p) => sum + (p.engagement || 0), 0);
-          const sumXY = posts.reduce((sum, p) => sum + p.reach * (p.engagement || 0), 0);
-          const sumX2 = posts.reduce((sum, p) => sum + p.reach * p.reach, 0);
-          const sumY2 = posts.reduce((sum, p) => sum + (p.engagement || 0) * (p.engagement || 0), 0);
+          const sumX = posts.reduce((sum, p) => sum + p.jumlah_reach, 0);
+          const sumY = posts.reduce((sum, p) => sum + (p.total_engagement || 0), 0);
+          const sumXY = posts.reduce((sum, p) => sum + p.jumlah_reach * (p.total_engagement || 0), 0);
+          const sumX2 = posts.reduce((sum, p) => sum + p.jumlah_reach * p.jumlah_reach, 0);
+          const sumY2 = posts.reduce((sum, p) => sum + (p.total_engagement || 0) * (p.total_engagement || 0), 0);
           const r = (n * sumXY - sumX * sumY) / Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
           setCorrelation(r * r);
           generateInsight(posts, trend, weekly, r * r);

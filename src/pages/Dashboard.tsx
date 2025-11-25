@@ -45,33 +45,33 @@ const Dashboard = () => {
       try {
         // Fetch posts for active dataset
         const { data: posts, error } = await supabase
-          .from("posts")
-          .select("*, platforms(name, display_name), content_types(name, display_name)")
-          .eq("project_id", selectedProject.id)
-          .eq("dataset_id", activeDataset.id)
-          .order("posted_at", { ascending: true });
+          .from("postingan")
+          .select("*, platform(kode_platform, nama_platform), jenis_konten(kode_jenis_konten, nama_jenis_konten)")
+          .eq("id_proyek", selectedProject.id)
+          .eq("id_dataset", activeDataset.id)
+          .order("waktu_diposting", { ascending: true });
 
         if (error) throw error;
 
         if (posts && posts.length > 0) {
           // Calculate KPIs
           const totalPosts = posts.length;
-          const avgER = posts.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / totalPosts;
+          const avgER = posts.reduce((sum, p) => sum + (p.engagement_rate_persen || 0), 0) / totalPosts;
           
           // Median reach
-          const sortedReach = [...posts].map(p => p.reach).sort((a, b) => a - b);
+          const sortedReach = [...posts].map(p => p.jumlah_reach).sort((a, b) => a - b);
           const medianReach = sortedReach[Math.floor(sortedReach.length / 2)] || 0;
           
           // Latest followers
           const latestPost = posts.reduce((latest, post) => 
-            new Date(post.posted_at) > new Date(latest.posted_at) ? post : latest
+            new Date(post.waktu_diposting) > new Date(latest.waktu_diposting) ? post : latest
           );
-          const followersNow = latestPost.followers || 0;
+          const followersNow = latestPost.jumlah_followers || 0;
           
           // Save and share rates
-          const totalReach = posts.reduce((sum, p) => sum + Math.max(p.reach, 1), 0);
-          const totalSaves = posts.reduce((sum, p) => sum + p.saved, 0);
-          const totalShares = posts.reduce((sum, p) => sum + p.shares, 0);
+          const totalReach = posts.reduce((sum, p) => sum + Math.max(p.jumlah_reach, 1), 0);
+          const totalSaves = posts.reduce((sum, p) => sum + p.jumlah_saved, 0);
+          const totalShares = posts.reduce((sum, p) => sum + p.jumlah_shares, 0);
           const saveRate = (totalSaves / totalReach) * 100;
           const shareRate = (totalShares / totalReach) * 100;
 
@@ -87,7 +87,7 @@ const Dashboard = () => {
           // Weekly ER Trend
           const weeklyMap = new Map<string, { totalER: number; count: number; postCount: number }>();
           posts.forEach(post => {
-            const date = new Date(post.posted_at);
+            const date = new Date(post.waktu_diposting);
             const weekStart = new Date(date);
             weekStart.setDate(date.getDate() - date.getDay());
             const weekKey = format(weekStart, "yyyy-MM-dd");
@@ -96,7 +96,7 @@ const Dashboard = () => {
               weeklyMap.set(weekKey, { totalER: 0, count: 0, postCount: 0 });
             }
             const week = weeklyMap.get(weekKey)!;
-            week.totalER += post.engagement_rate || 0;
+            week.totalER += post.engagement_rate_persen || 0;
             week.count++;
             week.postCount++;
           });
@@ -113,7 +113,7 @@ const Dashboard = () => {
           // Platform Distribution
           const platformMap = new Map<string, number>();
           posts.forEach(p => {
-            const name = p.platforms?.display_name || "Unknown";
+            const name = p.platform?.nama_platform || "Unknown";
             platformMap.set(name, (platformMap.get(name) || 0) + 1);
           });
           const platforms = Array.from(platformMap.entries())
@@ -124,7 +124,7 @@ const Dashboard = () => {
           // Content Type Distribution
           const contentTypeMap = new Map<string, number>();
           posts.forEach(p => {
-            const name = p.content_types?.display_name || "Unknown";
+            const name = p.jenis_konten?.nama_jenis_konten || "Unknown";
             contentTypeMap.set(name, (contentTypeMap.get(name) || 0) + 1);
           });
           const contentTypes = Array.from(contentTypeMap.entries())
@@ -227,12 +227,12 @@ const Dashboard = () => {
       // Calculate avg ER per content type
       const contentTypeERMap = new Map<string, { totalER: number; count: number }>();
       posts.forEach(post => {
-        const type = post.content_types?.display_name || "Unknown";
+        const type = post.jenis_konten?.nama_jenis_konten || "Unknown";
         if (!contentTypeERMap.has(type)) {
           contentTypeERMap.set(type, { totalER: 0, count: 0 });
         }
         const data = contentTypeERMap.get(type)!;
-        data.totalER += post.engagement_rate || 0;
+        data.totalER += post.engagement_rate_persen || 0;
         data.count++;
       });
       
