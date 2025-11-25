@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { InsightCard } from "@/components/InsightCard";
+import { NotesDialog } from "@/components/NotesDialog";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -296,11 +297,14 @@ const Dashboard = () => {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard Overview</h1>
-          <p className="text-muted-foreground mt-1">
-            Ringkasan performa konten sosial media Anda
-          </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Dashboard Overview</h1>
+            <p className="text-muted-foreground mt-1">
+              Ringkasan performa konten sosial media Anda
+            </p>
+          </div>
+          <NotesDialog scope="global" />
         </div>
 
         {/* KPI Cards */}

@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { InsightCard } from "@/components/InsightCard";
+import { SaveFilterDialog } from "@/components/SaveFilterDialog";
 
 const Audiens = () => {
   const navigate = useNavigate();
@@ -112,7 +113,13 @@ const Audiens = () => {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div><h1 className="text-3xl font-bold text-foreground">Audience & Growth</h1><p className="text-muted-foreground mt-2">Analisis pertumbuhan audiens</p></div>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Audience & Growth</h1>
+            <p className="text-muted-foreground mt-2">Analisis pertumbuhan audiens</p>
+          </div>
+          <SaveFilterDialog halaman="audiens" filterValues={{}} />
+        </div>
         {loading ? <Card><CardContent className="py-12 text-center text-muted-foreground">Loading...</CardContent></Card> : (
           <>
             <Card><CardHeader><CardTitle>Tren Followers Harian</CardTitle></CardHeader><CardContent><ResponsiveContainer width="100%" height={300}><LineChart data={followersTrend}><CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" /><XAxis dataKey="date" stroke="hsl(var(--foreground))" tickFormatter={(d) => format(new Date(d), "dd MMM")} /><YAxis stroke="hsl(var(--foreground))" /><Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "0.5rem" }} /><Line type="monotone" dataKey="followers" stroke="hsl(var(--primary))" strokeWidth={2} /></LineChart></ResponsiveContainer></CardContent></Card>
