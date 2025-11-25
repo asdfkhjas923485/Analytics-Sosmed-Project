@@ -314,8 +314,8 @@ const Bantuan = () => {
                           </div>
                           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1">
-                              <span className="font-medium">Ditanya oleh:</span>
-                              <span className="text-foreground">{q.profil?.nama_lengkap || 'Unknown'}</span>
+                              <span className="font-medium text-foreground">Ditanya oleh:</span>
+                              <span className="text-foreground font-semibold">{q.profil?.nama_lengkap || 'Unknown'}</span>
                             </div>
                             <span>•</span>
                             <span>{format(new Date(q.created_at), "dd MMM yyyy HH:mm", { locale: id })}</span>
@@ -358,17 +358,15 @@ const Bantuan = () => {
                           </div>
                           {q.rating ? (
                             <div className="border-t pt-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <p className="text-sm font-medium">Rating:</p>
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <span>oleh</span>
-                                  <span className="font-medium text-foreground">{q.profil?.nama_lengkap}</span>
-                                  {q.rating_at && (
-                                    <span className="ml-1">
-                                      • {format(new Date(q.rating_at), "dd MMM yyyy", { locale: id })}
-                                    </span>
-                                  )}
-                                </div>
+                              <div className="mb-2">
+                                <p className="text-sm font-semibold text-foreground">
+                                  Rating dari {q.profil?.nama_lengkap || 'Unknown'}:
+                                </p>
+                                {q.rating_at && (
+                                  <p className="text-xs text-muted-foreground">
+                                    {format(new Date(q.rating_at), "dd MMM yyyy HH:mm", { locale: id })}
+                                  </p>
+                                )}
                               </div>
                               <div className="flex items-center gap-2">
                                 {[1, 2, 3, 4, 5].map((star) => (
