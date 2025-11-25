@@ -62,7 +62,6 @@ const Bantuan = () => {
         .from("pertanyaan")
         .select("*")
         .eq("id_proyek", selectedProject.id)
-        .eq("id_pengguna", user?.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
