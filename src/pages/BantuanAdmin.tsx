@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { MessageSquare, CheckCircle, Clock, Send } from "lucide-react";
+import { MessageSquare, CheckCircle, Clock, Send, Star } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import {
@@ -30,6 +30,9 @@ interface Question {
   updated_at: string;
   id_pengguna: string;
   id_proyek: string;
+  rating: number | null;
+  komentar_rating: string | null;
+  rating_at: string | null;
   profil?: {
     nama_lengkap: string;
   };
@@ -70,16 +73,21 @@ const BantuanAdmin = () => {
         .from("pertanyaan")
         .select(`
           *,
-          profil:id_pengguna (nama_lengkap),
-          proyek:id_proyek (nama_proyek)
+          profil!fk_pertanyaan_pengguna(nama_lengkap),
+          proyek!fk_proyek(nama_proyek)
         `)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
+      
+      console.log("Fetched questions:", data);
       setQuestions(data as any || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching questions:", error);
-      toast.error("Gagal memuat pertanyaan");
+      toast.error(`Gagal memuat pertanyaan: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -272,6 +280,31 @@ const BantuanAdmin = () => {
                 Dikirim: {selectedQuestion && format(new Date(selectedQuestion.created_at), "dd MMM yyyy HH:mm", { locale: id })}
               </p>
             </div>
+            {selectedQuestion?.rating && (
+              <div className="bg-muted p-4 rounded-lg">
+                <Label className="text-sm font-medium">Rating dari User:</Label>
+                <div className="flex items-center gap-2 mt-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`h-4 w-4 ${
+                        star <= selectedQuestion.rating!
+                          ? "fill-primary text-primary"
+                          : "text-muted-foreground"
+                      }`}
+                    />
+                  ))}
+                  <span className="text-sm text-muted-foreground ml-2">
+                    ({selectedQuestion.rating}/5)
+                  </span>
+                </div>
+                {selectedQuestion.komentar_rating && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    "{selectedQuestion.komentar_rating}"
+                  </p>
+                )}
+              </div>
+            )}
             <div>
               <Label htmlFor="jawaban">Jawaban Anda:</Label>
               <Textarea

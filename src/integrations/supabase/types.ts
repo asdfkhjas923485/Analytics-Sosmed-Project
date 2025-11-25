@@ -283,6 +283,9 @@ export type Database = {
           isi_pertanyaan: string
           jawaban: string | null
           judul_pertanyaan: string
+          komentar_rating: string | null
+          rating: number | null
+          rating_at: string | null
           status: string
           updated_at: string
         }
@@ -295,6 +298,9 @@ export type Database = {
           isi_pertanyaan: string
           jawaban?: string | null
           judul_pertanyaan: string
+          komentar_rating?: string | null
+          rating?: number | null
+          rating_at?: string | null
           status?: string
           updated_at?: string
         }
@@ -307,10 +313,20 @@ export type Database = {
           isi_pertanyaan?: string
           jawaban?: string | null
           judul_pertanyaan?: string
+          komentar_rating?: string | null
+          rating?: number | null
+          rating_at?: string | null
           status?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_pertanyaan_pengguna"
+            columns: ["id_pengguna"]
+            isOneToOne: false
+            referencedRelation: "profil"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_proyek"
             columns: ["id_proyek"]
