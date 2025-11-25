@@ -77,21 +77,17 @@ const Bantuan = () => {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "UPDATE",
           schema: "public",
           table: "pertanyaan",
           filter: `id_proyek=eq.${selectedProject.id}`,
         },
         (payload) => {
-          if (payload.eventType === "INSERT") {
-            setQuestions((prev) => [payload.new as Question, ...prev]);
-          } else if (payload.eventType === "UPDATE") {
-            setQuestions((prev) =>
-              prev.map((q) => (q.id === payload.new.id ? (payload.new as Question) : q))
-            );
-            if ((payload.new as Question).status === "dijawab" && (payload.old as Question).status === "menunggu") {
-              toast.success("Pertanyaan Anda telah dijawab!");
-            }
+          setQuestions((prev) =>
+            prev.map((q) => (q.id === payload.new.id ? (payload.new as Question) : q))
+          );
+          if ((payload.new as Question).status === "dijawab" && (payload.old as Question).status === "menunggu") {
+            toast.success("Pertanyaan Anda telah dijawab!");
           }
         }
       )
