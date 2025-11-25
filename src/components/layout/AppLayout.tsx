@@ -98,14 +98,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                 Bantuan
               </NavLink>
               {profile?.peran === "admin" && (
-                <>
-                  <NavLink to="/platform" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                    Platform
-                  </NavLink>
-                  <NavLink to="/bantuan-admin" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                    Kelola Q&A
-                  </NavLink>
-                </>
+                <NavLink to="/platform" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
+                  Platform
+                </NavLink>
               )}
             </nav>
 

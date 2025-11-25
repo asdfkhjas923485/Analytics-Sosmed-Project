@@ -17,7 +17,6 @@ import Perbandingan from "./pages/Perbandingan";
 import RingkasanInsight from "./pages/RingkasanInsight";
 import ProjectNew from "./pages/ProjectNew";
 import Bantuan from "./pages/Bantuan";
-import BantuanAdmin from "./pages/BantuanAdmin";
 import AdminTest from "./pages/AdminTest";
 import TargetKPI from "./pages/TargetKPI";
 import Kampanye from "./pages/Kampanye";
@@ -47,7 +46,6 @@ const App = () => (
               <Route path="/ringkasan-insight" element={<RingkasanInsight />} />
               <Route path="/projects/new" element={<ProjectNew />} />
               <Route path="/bantuan" element={<Bantuan />} />
-              <Route path="/bantuan-admin" element={<BantuanAdmin />} />
               <Route path="/target-kpi" element={<TargetKPI />} />
               <Route path="/kampanye" element={<Kampanye />} />
               <Route path="/admin-test" element={<AdminTest />} />
