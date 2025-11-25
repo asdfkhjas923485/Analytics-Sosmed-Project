@@ -15,6 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { InsightCard } from "@/components/InsightCard";
+import { SaveFilterDialog } from "@/components/SaveFilterDialog";
+import { NotesDialog } from "@/components/NotesDialog";
 
 type SortBy = "er" | "reach" | "engagement";
 
@@ -243,9 +245,26 @@ const Performa = () => {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Content Performance</h1>
-          <p className="text-muted-foreground mt-2">Analisis performa setiap postingan</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Content Performance</h1>
+            <p className="text-muted-foreground mt-2">Analisis performa setiap postingan</p>
+          </div>
+          <div className="flex space-x-2">
+            <SaveFilterDialog 
+              halaman="performa" 
+              filterValues={{ 
+                dateFrom, 
+                dateTo, 
+                minReach, 
+                searchCaption, 
+                selectedPlatforms, 
+                selectedContentTypes, 
+                sortBy 
+              }} 
+            />
+            <NotesDialog scope="global" />
+          </div>
         </div>
 
         {/* Filters */}
@@ -384,7 +403,7 @@ const Performa = () => {
                       <TableHead className="text-right">Saved</TableHead>
                       <TableHead className="text-right">Engagement</TableHead>
                       <TableHead className="text-right">ER%</TableHead>
-                      <TableHead></TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -409,6 +428,7 @@ const Performa = () => {
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             {getPerformanceBadge(post)}
+                            <NotesDialog scope="post" scopeKey={post.id} />
                           </div>
                         </TableCell>
                       </TableRow>

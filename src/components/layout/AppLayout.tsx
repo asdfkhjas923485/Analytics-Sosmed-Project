@@ -79,6 +79,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               <NavLink to="/audiens" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
                 Audiens
               </NavLink>
+              <NavLink to="/target-kpi" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
+                Target KPI
+              </NavLink>
+              <NavLink to="/kampanye" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
+                Kampanye
+              </NavLink>
               <NavLink to="/laporan" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
                 Laporan
               </NavLink>

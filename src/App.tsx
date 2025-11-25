@@ -19,6 +19,8 @@ import ProjectNew from "./pages/ProjectNew";
 import Bantuan from "./pages/Bantuan";
 import BantuanAdmin from "./pages/BantuanAdmin";
 import AdminTest from "./pages/AdminTest";
+import TargetKPI from "./pages/TargetKPI";
+import Kampanye from "./pages/Kampanye";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +48,8 @@ const App = () => (
               <Route path="/projects/new" element={<ProjectNew />} />
               <Route path="/bantuan" element={<Bantuan />} />
               <Route path="/bantuan-admin" element={<BantuanAdmin />} />
+              <Route path="/target-kpi" element={<TargetKPI />} />
+              <Route path="/kampanye" element={<Kampanye />} />
               <Route path="/admin-test" element={<AdminTest />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
