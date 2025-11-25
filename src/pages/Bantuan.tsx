@@ -27,6 +27,8 @@ interface Question {
   rating: number | null;
   komentar_rating: string | null;
   rating_at: string | null;
+  proyek?: { nama_proyek: string };
+  profil?: { nama_lengkap: string };
 }
 
 const Bantuan = () => {
@@ -47,21 +49,22 @@ const Bantuan = () => {
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    if (user && selectedProject) {
+    if (user) {
       fetchQuestions();
       subscribeToChanges();
     }
-  }, [user, selectedProject]);
+  }, [user]);
 
   const fetchQuestions = async () => {
-    if (!selectedProject) return;
-    
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from("pertanyaan")
-        .select("*")
-        .eq("id_proyek", selectedProject.id)
+        .select(`
+          *,
+          proyek!fk_proyek(nama_proyek),
+          profil!fk_pertanyaan_pengguna(nama_lengkap)
+        `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -75,8 +78,6 @@ const Bantuan = () => {
   };
 
   const subscribeToChanges = () => {
-    if (!selectedProject) return;
-
     const channel = supabase
       .channel("pertanyaan_changes")
       .on(
@@ -85,14 +86,11 @@ const Bantuan = () => {
           event: "UPDATE",
           schema: "public",
           table: "pertanyaan",
-          filter: `id_proyek=eq.${selectedProject.id}`,
         },
         (payload) => {
-          setQuestions((prev) =>
-            prev.map((q) => (q.id === payload.new.id ? (payload.new as Question) : q))
-          );
+          fetchQuestions(); // Refresh all questions
           if ((payload.new as Question).status === "dijawab" && (payload.old as Question).status === "menunggu") {
-            toast.success("Pertanyaan Anda telah dijawab!");
+            toast.success("Pertanyaan telah dijawab!");
           }
         }
       )
@@ -242,9 +240,21 @@ const Bantuan = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <CardTitle className="text-lg">{q.judul_pertanyaan}</CardTitle>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {format(new Date(q.created_at), "dd MMM yyyy HH:mm", { locale: id })}
-                          </p>
+                          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                            <span>{format(new Date(q.created_at), "dd MMM yyyy HH:mm", { locale: id })}</span>
+                            {q.proyek && (
+                              <>
+                                <span>•</span>
+                                <span className="font-medium">{q.proyek.nama_proyek}</span>
+                              </>
+                            )}
+                            {q.profil && (
+                              <>
+                                <span>•</span>
+                                <span>{q.profil.nama_lengkap}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                         <Badge variant={q.status === "dijawab" ? "default" : "secondary"}>
                           {q.status === "dijawab" ? (
