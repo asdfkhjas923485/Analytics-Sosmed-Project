@@ -42,10 +42,10 @@ const WaktuTerbaik = () => {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from("posts")
+          .from("postingan")
           .select("*")
-          .eq("project_id", selectedProject.id)
-          .eq("dataset_id", activeDataset.id);
+          .eq("id_proyek", selectedProject.id)
+          .eq("id_dataset", activeDataset.id);
 
         if (error) throw error;
         setPosts(data || []);
@@ -67,18 +67,18 @@ const WaktuTerbaik = () => {
     const slotMap = new Map<string, { values: number[]; count: number }>();
     
     posts.forEach(post => {
-      const date = new Date(post.posted_at);
+      const date = new Date(post.waktu_diposting);
       const day = date.getDay();
       const hour = date.getHours();
       const key = `${day}-${hour}`;
 
       let value = 0;
       if (metric === "er") {
-        value = post.engagement_rate || 0;
+        value = post.engagement_rate_persen || 0;
       } else if (metric === "engagement") {
-        value = post.engagement || 0;
+        value = post.total_engagement || 0;
       } else if (metric === "reach") {
-        value = post.reach || 0;
+        value = post.jumlah_reach || 0;
       }
 
       if (!slotMap.has(key)) {
@@ -134,7 +134,7 @@ const WaktuTerbaik = () => {
     // Hourly frequency
     const hourlyCount = Array(24).fill(0);
     posts.forEach(post => {
-      const hour = new Date(post.posted_at).getHours();
+      const hour = new Date(post.waktu_diposting).getHours();
       hourlyCount[hour]++;
     });
     const hourly = hourlyCount.map((count, hour) => ({
