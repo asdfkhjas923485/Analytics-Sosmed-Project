@@ -273,6 +273,53 @@ export type Database = {
           },
         ]
       }
+      pertanyaan: {
+        Row: {
+          created_at: string
+          dijawab_oleh: string | null
+          id: string
+          id_pengguna: string
+          id_proyek: string
+          isi_pertanyaan: string
+          jawaban: string | null
+          judul_pertanyaan: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dijawab_oleh?: string | null
+          id?: string
+          id_pengguna: string
+          id_proyek: string
+          isi_pertanyaan: string
+          jawaban?: string | null
+          judul_pertanyaan: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dijawab_oleh?: string | null
+          id?: string
+          id_pengguna?: string
+          id_proyek?: string
+          isi_pertanyaan?: string
+          jawaban?: string | null
+          judul_pertanyaan?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_proyek"
+            columns: ["id_proyek"]
+            isOneToOne: false
+            referencedRelation: "proyek"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform: {
         Row: {
           created_at: string
