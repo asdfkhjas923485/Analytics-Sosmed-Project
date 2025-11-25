@@ -94,6 +94,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               <NavLink to="/ringkasan-insight" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
                 Ringkasan Insight
               </NavLink>
+              <NavLink to="/bantuan" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
+                Bantuan
+              </NavLink>
               {profile?.peran === "admin" && (
                 <>
                   <NavLink to="/platform" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
