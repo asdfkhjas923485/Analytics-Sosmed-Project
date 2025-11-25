@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useApp } from "@/contexts/AppContext";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,7 +36,7 @@ interface Question {
 
 const Bantuan = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, profile } = useAuth();
   const { selectedProject } = useApp();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +46,22 @@ const Bantuan = () => {
   const [filter, setFilter] = useState<"semua" | "menunggu" | "dijawab">("semua");
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
   const [selectedQuestionForRating, setSelectedQuestionForRating] = useState<string | null>(null);
+
+  // Calculate statistics
+  const stats = {
+    totalTerjawab: questions.filter(q => q.status === "dijawab").length,
+    rataRataRating: questions.filter(q => q.rating).length > 0 
+      ? (questions.reduce((sum, q) => sum + (q.rating || 0), 0) / questions.filter(q => q.rating).length).toFixed(1)
+      : "0",
+    waktuResponTercepat: questions
+      .filter(q => q.status === "dijawab" && q.jawaban)
+      .map(q => {
+        const created = new Date(q.created_at).getTime();
+        const updated = new Date(q.updated_at).getTime();
+        return (updated - created) / (1000 * 60 * 60); // hours
+      })
+      .sort((a, b) => a - b)[0] || 0
+  };
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -64,8 +81,8 @@ const Bantuan = () => {
         .from("pertanyaan")
         .select(`
           *,
-          proyek!fk_proyek(nama_proyek),
-          profil!fk_pertanyaan_pengguna(nama_lengkap)
+          proyek:id_proyek(nama_proyek),
+          profil:id_pengguna(nama_lengkap)
         `)
         .order("created_at", { ascending: false });
 
@@ -154,12 +171,68 @@ const Bantuan = () => {
           <p className="text-muted-foreground mt-2">Ajukan pertanyaan dan dapatkan bantuan dari admin</p>
         </div>
 
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Terjawab</p>
+                  <p className="text-3xl font-bold text-foreground mt-1">{stats.totalTerjawab}</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-success" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Rata-rata Rating</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-3xl font-bold text-foreground">{stats.rataRataRating}</p>
+                    <Star className="h-6 w-6 fill-primary text-primary" />
+                  </div>
+                </div>
+                <Star className="h-8 w-8 text-primary" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Respon Tercepat</p>
+                  <p className="text-3xl font-bold text-foreground mt-1">
+                    {stats.waktuResponTercepat > 0 
+                      ? stats.waktuResponTercepat < 1 
+                        ? `${Math.round(stats.waktuResponTercepat * 60)} menit`
+                        : `${Math.round(stats.waktuResponTercepat)} jam`
+                      : "-"}
+                  </p>
+                </div>
+                <Clock className="h-8 w-8 text-primary" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle>Ajukan Pertanyaan</CardTitle>
             <CardDescription>Tim kami akan menjawab pertanyaan Anda secepatnya</CardDescription>
           </CardHeader>
           <CardContent>
+            {!profile?.nama_lengkap && (
+              <Alert className="mb-4">
+                <AlertDescription>
+                  Anda belum mengisi nama lengkap di profil. Pertanyaan akan ditampilkan sebagai "Unknown". 
+                  <a href="/profile" className="underline ml-1">Update profil</a>
+                </AlertDescription>
+              </Alert>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label htmlFor="judul">Judul Pertanyaan</Label>
