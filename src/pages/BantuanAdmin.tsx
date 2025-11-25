@@ -70,8 +70,8 @@ const BantuanAdmin = () => {
         .from("pertanyaan")
         .select(`
           *,
-          profil!id_pengguna (nama_lengkap),
-          proyek!id_proyek (nama_proyek)
+          profil:id_pengguna (nama_lengkap),
+          proyek:id_proyek (nama_proyek)
         `)
         .order("created_at", { ascending: false });
 
