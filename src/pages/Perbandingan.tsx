@@ -42,16 +42,16 @@ const Perbandingan = () => {
             if (!dataset) return null;
 
             const { data: posts, error } = await supabase
-              .from("posts")
-              .select("*, platforms(name, display_name), content_types(name, display_name)")
-              .eq("dataset_id", datasetId);
+              .from("postingan")
+              .select("*, platform(kode_platform, nama_platform), jenis_konten(kode_jenis_konten, nama_jenis_konten)")
+              .eq("id_dataset", datasetId);
 
             if (error) throw error;
 
             if (!posts || posts.length === 0) {
               return {
                 datasetId,
-                datasetName: dataset.name,
+                datasetName: dataset.nama_dataset,
                 totalPosts: 0,
                 avgER: 0,
                 medianReach: 0,
@@ -62,16 +62,16 @@ const Perbandingan = () => {
             }
 
             const totalPosts = posts.length;
-            const avgER = posts.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / totalPosts;
+            const avgER = posts.reduce((sum, p) => sum + (p.engagement_rate_persen || 0), 0) / totalPosts;
             
-            const sortedReach = [...posts].map(p => p.reach).sort((a, b) => a - b);
+            const sortedReach = [...posts].map(p => p.jumlah_reach).sort((a, b) => a - b);
             const medianReach = sortedReach[Math.floor(sortedReach.length / 2)] || 0;
             
-            const totalEngagement = posts.reduce((sum, p) => sum + (p.engagement || 0), 0);
+            const totalEngagement = posts.reduce((sum, p) => sum + (p.total_engagement || 0), 0);
 
             const platformMap = new Map<string, number>();
             posts.forEach(p => {
-              const name = p.platforms?.display_name || "Unknown";
+              const name = p.platform?.nama_platform || "Unknown";
               platformMap.set(name, (platformMap.get(name) || 0) + 1);
             });
             const platformDist = Array.from(platformMap.entries()).map(([name, count]) => ({
@@ -82,7 +82,7 @@ const Perbandingan = () => {
 
             const contentTypeMap = new Map<string, number>();
             posts.forEach(p => {
-              const name = p.content_types?.display_name || "Unknown";
+              const name = p.jenis_konten?.nama_jenis_konten || "Unknown";
               contentTypeMap.set(name, (contentTypeMap.get(name) || 0) + 1);
             });
             const contentTypeDist = Array.from(contentTypeMap.entries()).map(([name, count]) => ({
@@ -93,7 +93,7 @@ const Perbandingan = () => {
 
             return {
               datasetId,
-              datasetName: dataset.name,
+              datasetName: dataset.nama_dataset,
               totalPosts,
               avgER: Number(avgER.toFixed(2)),
               medianReach,
@@ -202,8 +202,8 @@ const Perbandingan = () => {
                       disabled={!selectedDatasets.includes(dataset.id) && selectedDatasets.length >= 3}
                     />
                     <label className="text-sm text-foreground">
-                      {dataset.name} ({dataset.row_count} posts)
-                      {dataset.is_active && <span className="ml-2 text-primary">(Aktif)</span>}
+                      {dataset.nama_dataset} ({dataset.jumlah_baris_dataset} posts)
+                      {dataset.dataset_aktif && <span className="ml-2 text-primary">(Aktif)</span>}
                     </label>
                   </div>
                 ))

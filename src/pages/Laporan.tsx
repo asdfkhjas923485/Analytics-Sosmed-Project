@@ -40,12 +40,12 @@ const Laporan = () => {
     setGenerating(true);
     try {
       const { data: posts, error } = await supabase
-        .from("posts")
-        .select("*, platforms(name, display_name), content_types(name, display_name)")
-        .eq("project_id", selectedProject.id)
-        .eq("dataset_id", activeDataset.id)
-        .gte("posted_at", dateFrom)
-        .lte("posted_at", dateTo);
+        .from("postingan")
+        .select("*, platform(kode_platform, nama_platform), jenis_konten(kode_jenis_konten, nama_jenis_konten)")
+        .eq("id_proyek", selectedProject.id)
+        .eq("id_dataset", activeDataset.id)
+        .gte("waktu_diposting", dateFrom)
+        .lte("waktu_diposting", dateTo);
 
       if (error) throw error;
 
@@ -56,31 +56,31 @@ const Laporan = () => {
       }
 
       const totalPosts = posts.length;
-      const avgER = posts.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / totalPosts;
-      const totalReach = posts.reduce((sum, p) => sum + p.reach, 0);
+      const avgER = posts.reduce((sum, p) => sum + (p.engagement_rate_persen || 0), 0) / totalPosts;
+      const totalReach = posts.reduce((sum, p) => sum + p.jumlah_reach, 0);
       const latestFollowers = posts.reduce((latest, post) => 
-        new Date(post.posted_at) > new Date(latest.posted_at) ? post : latest
-      ).followers;
+        new Date(post.waktu_diposting) > new Date(latest.waktu_diposting) ? post : latest
+      ).jumlah_followers;
       
-      const totalSaves = posts.reduce((sum, p) => sum + p.saved, 0);
-      const totalShares = posts.reduce((sum, p) => sum + p.shares, 0);
+      const totalSaves = posts.reduce((sum, p) => sum + p.jumlah_saved, 0);
+      const totalShares = posts.reduce((sum, p) => sum + p.jumlah_shares, 0);
       const saveRate = (totalSaves / Math.max(totalReach, 1)) * 100;
       const shareRate = (totalShares / Math.max(totalReach, 1)) * 100;
 
-      const sortedReach = [...posts].map(p => p.reach).sort((a, b) => a - b);
+      const sortedReach = [...posts].map(p => p.jumlah_reach).sort((a, b) => a - b);
       const q1Index = Math.floor(sortedReach.length * 0.25);
       const q1Reach = sortedReach[q1Index] || 0;
-      const fairPosts = posts.filter(p => p.reach > q1Reach);
+      const fairPosts = posts.filter(p => p.jumlah_reach > q1Reach);
 
-      const top5 = [...fairPosts].sort((a, b) => (b.engagement_rate || 0) - (a.engagement_rate || 0)).slice(0, 5);
-      const worst5 = [...fairPosts].sort((a, b) => (a.engagement_rate || 0) - (b.engagement_rate || 0)).slice(0, 5);
+      const top5 = [...fairPosts].sort((a, b) => (b.engagement_rate_persen || 0) - (a.engagement_rate_persen || 0)).slice(0, 5);
+      const worst5 = [...fairPosts].sort((a, b) => (a.engagement_rate_persen || 0) - (b.engagement_rate_persen || 0)).slice(0, 5);
 
       const slotMap = new Map<string, { values: number[]; count: number }>();
       posts.forEach(post => {
-        const date = new Date(post.posted_at);
+        const date = new Date(post.waktu_diposting);
         const key = `${date.getDay()}-${date.getHours()}`;
         if (!slotMap.has(key)) slotMap.set(key, { values: [], count: 0 });
-        slotMap.get(key)!.values.push(post.engagement_rate || 0);
+        slotMap.get(key)!.values.push(post.engagement_rate_persen || 0);
         slotMap.get(key)!.count++;
       });
 
@@ -102,9 +102,9 @@ const Laporan = () => {
 
       const contentTypeMap = new Map<string, { totalER: number; count: number }>();
       posts.forEach(post => {
-        const name = post.content_types?.display_name || "Unknown";
+        const name = post.jenis_konten?.nama_jenis_konten || "Unknown";
         if (!contentTypeMap.has(name)) contentTypeMap.set(name, { totalER: 0, count: 0 });
-        contentTypeMap.get(name)!.totalER += post.engagement_rate || 0;
+        contentTypeMap.get(name)!.totalER += post.engagement_rate_persen || 0;
         contentTypeMap.get(name)!.count++;
       });
 
@@ -183,8 +183,8 @@ const Laporan = () => {
               <Card><CardHeader><CardTitle>KPI</CardTitle></CardHeader><CardContent><div className="grid grid-cols-3 gap-4"><div><p className="text-sm text-muted-foreground">Total</p><p className="text-2xl font-bold">{reportData.totalPosts}</p></div><div><p className="text-sm text-muted-foreground">Avg ER</p><p className="text-2xl font-bold text-primary">{reportData.avgER}%</p></div><div><p className="text-sm text-muted-foreground">Reach</p><p className="text-2xl font-bold">{reportData.totalReach.toLocaleString()}</p></div></div></CardContent></Card>
 
               <div className="grid md:grid-cols-2 gap-6">
-                <Card><CardHeader><CardTitle className="text-success">Top 5</CardTitle></CardHeader><CardContent><div className="space-y-3">{reportData.top5.map((p: any, i: number) => (<div key={p.id} className="border-b pb-2 last:border-0"><Badge>#{i+1}</Badge><p className="text-sm font-medium">{p.post_id}</p><p className="text-lg font-bold text-primary">{(p.engagement_rate||0).toFixed(2)}%</p></div>))}</div></CardContent></Card>
-                <Card><CardHeader><CardTitle className="text-destructive">Bottom 5</CardTitle></CardHeader><CardContent><div className="space-y-3">{reportData.worst5.map((p: any) => (<div key={p.id} className="border-b pb-2 last:border-0"><p className="text-sm font-medium">{p.post_id}</p><p className="text-lg font-bold">{(p.engagement_rate||0).toFixed(2)}%</p></div>))}</div></CardContent></Card>
+                <Card><CardHeader><CardTitle className="text-success">Top 5</CardTitle></CardHeader><CardContent><div className="space-y-3">{reportData.top5.map((p: any, i: number) => (<div key={p.id} className="border-b pb-2 last:border-0"><Badge>#{i+1}</Badge><p className="text-sm font-medium">{p.kode_postingan}</p><p className="text-lg font-bold text-primary">{(p.engagement_rate_persen||0).toFixed(2)}%</p></div>))}</div></CardContent></Card>
+                <Card><CardHeader><CardTitle className="text-destructive">Bottom 5</CardTitle></CardHeader><CardContent><div className="space-y-3">{reportData.worst5.map((p: any) => (<div key={p.id} className="border-b pb-2 last:border-0"><p className="text-sm font-medium">{p.kode_postingan}</p><p className="text-lg font-bold">{(p.engagement_rate_persen||0).toFixed(2)}%</p></div>))}</div></CardContent></Card>
               </div>
 
               <Card><CardHeader><CardTitle>Waktu Terbaik</CardTitle></CardHeader><CardContent><div className="grid md:grid-cols-3 gap-4">{reportData.bestTimes.map((t: any, i: number) => (<div key={i} className="p-4 border rounded"><Badge>#{i+1}</Badge><p className="font-bold">{t.day}, {t.hour}</p><p className="text-sm">ER: {t.medianER.toFixed(2)}%</p></div>))}</div></CardContent></Card>

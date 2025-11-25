@@ -47,17 +47,17 @@ const RingkasanInsight = () => {
     setLoading(true);
     try {
       let query = supabase
-        .from("posts")
-        .select("*, platforms(name, display_name), content_types(name, display_name)")
-        .eq("project_id", selectedProject.id)
-        .eq("dataset_id", activeDataset.id)
-        .order("posted_at", { ascending: true });
+        .from("postingan")
+        .select("*, platform(kode_platform, nama_platform), jenis_konten(kode_jenis_konten, nama_jenis_konten)")
+        .eq("id_proyek", selectedProject.id)
+        .eq("id_dataset", activeDataset.id)
+        .order("waktu_diposting", { ascending: true });
 
       if (dateRange.from) {
-        query = query.gte("posted_at", dateRange.from.toISOString());
+        query = query.gte("waktu_diposting", dateRange.from.toISOString());
       }
       if (dateRange.to) {
-        query = query.lte("posted_at", dateRange.to.toISOString());
+        query = query.lte("waktu_diposting", dateRange.to.toISOString());
       }
 
       const { data: posts, error } = await query;
@@ -81,13 +81,13 @@ const RingkasanInsight = () => {
     // 1. ER Trend Insight
     const weeklyMap = new Map<string, { totalER: number; count: number }>();
     posts.forEach(post => {
-      const date = new Date(post.posted_at);
+      const date = new Date(post.waktu_diposting);
       const weekStart = new Date(date);
       weekStart.setDate(date.getDate() - date.getDay());
       const weekKey = format(weekStart, "yyyy-MM-dd");
       const current = weeklyMap.get(weekKey) || { totalER: 0, count: 0 };
       weeklyMap.set(weekKey, {
-        totalER: current.totalER + (post.engagement_rate || 0),
+        totalER: current.totalER + (post.engagement_rate_persen || 0),
         count: current.count + 1,
       });
     });
@@ -121,7 +121,7 @@ const RingkasanInsight = () => {
     // 2. Platform Distribution Insight
     const platformMap = new Map<string, number>();
     posts.forEach(p => {
-      const name = p.platforms?.display_name || "Unknown";
+      const name = p.platform?.nama_platform || "Unknown";
       platformMap.set(name, (platformMap.get(name) || 0) + 1);
     });
 
@@ -157,11 +157,11 @@ const RingkasanInsight = () => {
     // 3. Content Type Insight
     const contentTypeMap = new Map<string, { count: number; totalER: number }>();
     posts.forEach(p => {
-      const name = p.content_types?.display_name || "Unknown";
+      const name = p.jenis_konten?.nama_jenis_konten || "Unknown";
       const current = contentTypeMap.get(name) || { count: 0, totalER: 0 };
       contentTypeMap.set(name, {
         count: current.count + 1,
-        totalER: current.totalER + (p.engagement_rate || 0),
+        totalER: current.totalER + (p.engagement_rate_persen || 0),
       });
     });
 
@@ -191,13 +191,13 @@ const RingkasanInsight = () => {
     // 4. Best Time Insight
     const timeSlotMap = new Map<string, { totalER: number; count: number }>();
     posts.forEach(post => {
-      const date = new Date(post.posted_at);
+      const date = new Date(post.waktu_diposting);
       const day = date.getDay();
       const hour = date.getHours();
       const key = `${day}-${hour}`;
       const current = timeSlotMap.get(key) || { totalER: 0, count: 0 };
       timeSlotMap.set(key, {
-        totalER: current.totalER + (post.engagement_rate || 0),
+        totalER: current.totalER + (post.engagement_rate_persen || 0),
         count: current.count + 1,
       });
     });
@@ -235,9 +235,9 @@ const RingkasanInsight = () => {
     // 5. Audience Growth Insight
     const followersTrend = Array.from(
       posts.reduce((map, post) => {
-        const date = format(new Date(post.posted_at), "yyyy-MM-dd");
+        const date = format(new Date(post.waktu_diposting), "yyyy-MM-dd");
         if (!map.has(date)) map.set(date, []);
-        map.get(date)!.push(post.followers);
+        map.get(date)!.push(post.jumlah_followers);
         return map;
       }, new Map<string, number[]>())
     ).map(([date, followers]) => ({

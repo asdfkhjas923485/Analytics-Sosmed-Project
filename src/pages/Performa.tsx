@@ -47,13 +47,13 @@ const Performa = () => {
   useEffect(() => {
     const fetchMasterData = async () => {
       const { data: platformData } = await supabase
-        .from("platforms")
+        .from("platform")
         .select("*")
-        .eq("is_active", true);
+        .eq("platform_aktif", true);
       const { data: contentTypeData } = await supabase
-        .from("content_types")
+        .from("jenis_konten")
         .select("*")
-        .eq("is_active", true);
+        .eq("jenis_konten_aktif", true);
       
       setPlatforms(platformData || []);
       setContentTypes(contentTypeData || []);
@@ -76,11 +76,11 @@ const Performa = () => {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from("posts")
-          .select("*, platforms(name, display_name), content_types(name, display_name)")
-          .eq("project_id", selectedProject.id)
-          .eq("dataset_id", activeDataset.id)
-          .order("posted_at", { ascending: false });
+          .from("postingan")
+          .select("*, platform(kode_platform, nama_platform), jenis_konten(kode_jenis_konten, nama_jenis_konten)")
+          .eq("id_proyek", selectedProject.id)
+          .eq("id_dataset", activeDataset.id)
+          .order("waktu_diposting", { ascending: false });
 
         if (error) throw error;
         setPosts(data || []);
@@ -100,33 +100,33 @@ const Performa = () => {
 
     // Apply filters
     if (dateFrom) {
-      filtered = filtered.filter(p => new Date(p.posted_at) >= new Date(dateFrom));
+      filtered = filtered.filter(p => new Date(p.waktu_diposting) >= new Date(dateFrom));
     }
     if (dateTo) {
-      filtered = filtered.filter(p => new Date(p.posted_at) <= new Date(dateTo));
+      filtered = filtered.filter(p => new Date(p.waktu_diposting) <= new Date(dateTo));
     }
     if (minReach) {
-      filtered = filtered.filter(p => p.reach >= parseInt(minReach));
+      filtered = filtered.filter(p => p.jumlah_reach >= parseInt(minReach));
     }
     if (searchCaption) {
       filtered = filtered.filter(p => 
-        p.caption?.toLowerCase().includes(searchCaption.toLowerCase())
+        p.teks_caption?.toLowerCase().includes(searchCaption.toLowerCase())
       );
     }
     if (selectedPlatforms.length > 0) {
-      filtered = filtered.filter(p => selectedPlatforms.includes(p.platform_id));
+      filtered = filtered.filter(p => selectedPlatforms.includes(p.id_platform));
     }
     if (selectedContentTypes.length > 0) {
-      filtered = filtered.filter(p => selectedContentTypes.includes(p.content_type_id));
+      filtered = filtered.filter(p => selectedContentTypes.includes(p.id_jenis_konten));
     }
 
     // Apply sorting
     if (sortBy === "er") {
-      filtered.sort((a, b) => (b.engagement_rate || 0) - (a.engagement_rate || 0));
+      filtered.sort((a, b) => (b.engagement_rate_persen || 0) - (a.engagement_rate_persen || 0));
     } else if (sortBy === "reach") {
-      filtered.sort((a, b) => b.reach - a.reach);
+      filtered.sort((a, b) => b.jumlah_reach - a.jumlah_reach);
     } else if (sortBy === "engagement") {
-      filtered.sort((a, b) => (b.engagement || 0) - (a.engagement || 0));
+      filtered.sort((a, b) => (b.total_engagement || 0) - (a.total_engagement || 0));
     }
 
     setFilteredPosts(filtered);
@@ -145,8 +145,8 @@ const Performa = () => {
     const contentTypeCount = new Map<string, number>();
     
     top5.forEach(post => {
-      const platform = post.platforms?.display_name || "Unknown";
-      const contentType = post.content_types?.display_name || "Unknown";
+      const platform = post.platform?.nama_platform || "Unknown";
+      const contentType = post.jenis_konten?.nama_jenis_konten || "Unknown";
       platformCount.set(platform, (platformCount.get(platform) || 0) + 1);
       contentTypeCount.set(contentType, (contentTypeCount.get(contentType) || 0) + 1);
     });
@@ -157,17 +157,17 @@ const Performa = () => {
     let insightText = "";
 
     if (currentSortBy === "er") {
-      const erTop5Avg = top5.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / top5.length;
-      const erAllAvg = allPosts.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / allPosts.length;
+      const erTop5Avg = top5.reduce((sum, p) => sum + (p.engagement_rate_persen || 0), 0) / top5.length;
+      const erAllAvg = allPosts.reduce((sum, p) => sum + (p.engagement_rate_persen || 0), 0) / allPosts.length;
       const diff = ((erTop5Avg - erAllAvg) / erAllAvg) * 100;
       
       insightText = `Konten dengan engagement rate tertinggi didominasi oleh platform ${topPlatform[0]} (${topPlatform[1]} dari 5 teratas) dan tipe konten ${topContentType[0]} (${topContentType[1]} dari 5 teratas). `;
       insightText += `Rata-rata ER top 5 adalah ${erTop5Avg.toFixed(2)}%, ${diff > 0 ? 'lebih tinggi' : 'lebih rendah'} ${Math.abs(diff).toFixed(1)}% dari rata-rata keseluruhan (${erAllAvg.toFixed(2)}%). `;
       insightText += `Kombinasi ${topPlatform[0]} dengan format ${topContentType[0]} paling efektif untuk mendorong engagement tinggi.`;
     } else if (currentSortBy === "reach") {
-      const reachTop5Avg = top5.reduce((sum, p) => sum + (p.reach || 0), 0) / top5.length;
-      const erTop5Avg = top5.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / top5.length;
-      const erAllAvg = allPosts.reduce((sum, p) => sum + (p.engagement_rate || 0), 0) / allPosts.length;
+      const reachTop5Avg = top5.reduce((sum, p) => sum + (p.jumlah_reach || 0), 0) / top5.length;
+      const erTop5Avg = top5.reduce((sum, p) => sum + (p.engagement_rate_persen || 0), 0) / top5.length;
+      const erAllAvg = allPosts.reduce((sum, p) => sum + (p.engagement_rate_persen || 0), 0) / allPosts.length;
       const erDiff = erTop5Avg - erAllAvg;
       
       insightText = `Konten dengan jangkauan terluas didominasi oleh ${topPlatform[0]} (${topPlatform[1]} dari 5 teratas) dan ${topContentType[0]} (${topContentType[1]} dari 5 teratas) dengan rata-rata reach ${reachTop5Avg.toLocaleString()}. `;
@@ -191,19 +191,19 @@ const Performa = () => {
     const csv = [
       ["Post ID", "Platform", "Tanggal", "Tipe", "Caption", "Reach", "Views", "Likes", "Comments", "Shares", "Saved", "Engagement", "ER%"],
       ...filteredPosts.map(p => [
-        p.post_id,
-        p.platforms?.display_name || "",
-        format(new Date(p.posted_at), "yyyy-MM-dd HH:mm"),
-        p.content_types?.display_name || "",
-        p.caption || "",
-        p.reach,
-        p.views,
-        p.likes,
-        p.comments,
-        p.shares,
-        p.saved,
-        p.engagement || 0,
-        (p.engagement_rate || 0).toFixed(2)
+        p.kode_postingan,
+        p.platform?.nama_platform || "",
+        format(new Date(p.waktu_diposting), "yyyy-MM-dd HH:mm"),
+        p.jenis_konten?.nama_jenis_konten || "",
+        p.teks_caption || "",
+        p.jumlah_reach,
+        p.jumlah_views,
+        p.jumlah_likes,
+        p.jumlah_komentar,
+        p.jumlah_shares,
+        p.jumlah_saved,
+        p.total_engagement || 0,
+        (p.engagement_rate_persen || 0).toFixed(2)
       ])
     ].map(row => row.join(",")).join("\n");
 
@@ -218,7 +218,7 @@ const Performa = () => {
 
   const getPerformanceBadge = (post: any) => {
     if (!posts.length) return null;
-    const sortedByER = [...posts].sort((a, b) => (b.engagement_rate || 0) - (a.engagement_rate || 0));
+    const sortedByER = [...posts].sort((a, b) => (b.engagement_rate_persen || 0) - (a.engagement_rate_persen || 0));
     const index = sortedByER.findIndex(p => p.id === post.id);
     const percentile = (index / sortedByER.length) * 100;
 
@@ -288,8 +288,8 @@ const Performa = () => {
                             setSelectedPlatforms(selectedPlatforms.filter(id => id !== platform.id));
                           }
                         }}
-                      />
-                      <label className="text-sm text-foreground">{platform.display_name}</label>
+                       />
+                      <label className="text-sm text-foreground">{platform.nama_platform}</label>
                     </div>
                   ))}
                 </div>
@@ -309,8 +309,8 @@ const Performa = () => {
                             setSelectedContentTypes(selectedContentTypes.filter(id => id !== type.id));
                           }
                         }}
-                      />
-                      <label className="text-sm text-foreground">{type.display_name}</label>
+                       />
+                      <label className="text-sm text-foreground">{type.nama_jenis_konten}</label>
                     </div>
                   ))}
                 </div>
@@ -390,21 +390,21 @@ const Performa = () => {
                   <TableBody>
                     {filteredPosts.map(post => (
                       <TableRow key={post.id}>
-                        <TableCell className="font-medium">{post.post_id}</TableCell>
-                        <TableCell>{post.platforms?.display_name}</TableCell>
-                        <TableCell>{format(new Date(post.posted_at), "dd MMM yyyy HH:mm")}</TableCell>
-                        <TableCell>{post.content_types?.display_name}</TableCell>
-                        <TableCell className="max-w-xs truncate" title={post.caption || ""}>
-                          {post.caption || "-"}
+                        <TableCell className="font-medium">{post.kode_postingan}</TableCell>
+                        <TableCell>{post.platform?.nama_platform}</TableCell>
+                        <TableCell>{format(new Date(post.waktu_diposting), "dd MMM yyyy HH:mm")}</TableCell>
+                        <TableCell>{post.jenis_konten?.nama_jenis_konten}</TableCell>
+                        <TableCell className="max-w-xs truncate" title={post.teks_caption || ""}>
+                          {post.teks_caption || "-"}
                         </TableCell>
-                        <TableCell className="text-right">{post.reach.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{post.likes.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{post.comments.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{post.shares.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{post.saved.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{(post.engagement || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{post.jumlah_reach.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{post.jumlah_likes.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{post.jumlah_komentar.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{post.jumlah_shares.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{post.jumlah_saved.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{(post.total_engagement || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">
-                          {(post.engagement_rate || 0).toFixed(2)}%
+                          {(post.engagement_rate_persen || 0).toFixed(2)}%
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
