@@ -18,6 +18,8 @@ import RatingDialog from "@/components/RatingDialog";
 
 interface Question {
   id: string;
+  id_pengguna: string;
+  id_proyek: string;
   judul_pertanyaan: string;
   isi_pertanyaan: string;
   jawaban: string | null;
@@ -129,6 +131,7 @@ const Bantuan = () => {
       toast.success("Pertanyaan berhasil dikirim");
       setJudul("");
       setPertanyaan("");
+      fetchQuestions(); // Refresh list
     } catch (error) {
       console.error("Error submitting question:", error);
       toast.error("Gagal mengirim pertanyaan");
@@ -142,15 +145,6 @@ const Bantuan = () => {
     return q.status === filter;
   });
 
-  if (!selectedProject) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-64">
-          <p className="text-foreground">Silakan pilih project terlebih dahulu</p>
-        </div>
-      </AppLayout>
-    );
-  }
 
   return (
     <AppLayout>
@@ -304,7 +298,7 @@ const Bantuan = () => {
                                 <p className="text-sm text-muted-foreground mt-2">{q.komentar_rating}</p>
                               )}
                             </div>
-                          ) : (
+                           ) : q.id_pengguna === user?.id ? (
                             <Button
                               size="sm"
                               variant="outline"
@@ -316,6 +310,8 @@ const Bantuan = () => {
                               <Star className="h-4 w-4 mr-2" />
                               Beri Rating
                             </Button>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">Belum ada rating</p>
                           )}
                         </div>
                       )}
