@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Edit, TrendingUp, Users, Target } from "lucide-react";
+import { Plus, Trash2, Edit, TrendingUp, Users, Target, BarChart3, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -44,17 +44,37 @@ interface CompetitorData {
   rata_rata_likes: number;
 }
 
+interface CompetitorWithLatestData extends Competitor {
+  latest_data?: {
+    jumlah_followers: number;
+    rata_rata_engagement_rate: number;
+    total_posts: number;
+    tanggal_data: string;
+  };
+}
+
 const KompetitorAnalysis = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedProject } = useApp();
   const { toast } = useToast();
   
-  const [competitors, setCompetitors] = useState<Competitor[]>([]);
+  const [competitors, setCompetitors] = useState<CompetitorWithLatestData[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCompetitor, setEditingCompetitor] = useState<Competitor | null>(null);
   const [comparisonData, setComparisonData] = useState<any[]>([]);
+  const [dataDialogOpen, setDataDialogOpen] = useState(false);
+  const [selectedCompetitorForData, setSelectedCompetitorForData] = useState<Competitor | null>(null);
+  const [competitorDataForm, setCompetitorDataForm] = useState({
+    tanggal_data: new Date().toISOString().split('T')[0],
+    jumlah_followers: 0,
+    rata_rata_engagement_rate: 0,
+    total_posts: 0,
+    rata_rata_likes: 0,
+    rata_rata_comments: 0,
+    rata_rata_shares: 0,
+  });
   
   const chartRef1 = useRef<HTMLDivElement>(null);
   const chartRef2 = useRef<HTMLDivElement>(null);
@@ -86,12 +106,34 @@ const KompetitorAnalysis = () => {
     try {
       const { data, error } = await supabase
         .from("kompetitor")
-        .select("*")
+        .select(`
+          *,
+          data_kompetitor (
+            jumlah_followers,
+            rata_rata_engagement_rate,
+            total_posts,
+            tanggal_data
+          )
+        `)
         .eq("id_proyek", selectedProject.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setCompetitors(data || []);
+      
+      // Transform data to include latest metrics
+      const competitorsWithData = data?.map((comp: any) => {
+        const latestData = comp.data_kompetitor?.sort((a: any, b: any) => 
+          new Date(b.tanggal_data).getTime() - new Date(a.tanggal_data).getTime()
+        )[0];
+        
+        return {
+          ...comp,
+          latest_data: latestData,
+          data_kompetitor: undefined
+        };
+      }) || [];
+      
+      setCompetitors(competitorsWithData);
       
       if (data && data.length > 0) {
         await fetchComparisonData(data.map(c => c.id));
@@ -217,6 +259,51 @@ const KompetitorAnalysis = () => {
       handle_kompetitor: "",
     });
     setEditingCompetitor(null);
+  };
+
+  const handleAddData = (competitor: Competitor) => {
+    setSelectedCompetitorForData(competitor);
+    setCompetitorDataForm({
+      tanggal_data: new Date().toISOString().split('T')[0],
+      jumlah_followers: 0,
+      rata_rata_engagement_rate: 0,
+      total_posts: 0,
+      rata_rata_likes: 0,
+      rata_rata_comments: 0,
+      rata_rata_shares: 0,
+    });
+    setDataDialogOpen(true);
+  };
+
+  const handleSubmitData = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompetitorForData) return;
+
+    try {
+      const { error } = await supabase
+        .from("data_kompetitor")
+        .insert([{
+          id_kompetitor: selectedCompetitorForData.id,
+          ...competitorDataForm,
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sukses",
+        description: "Data kompetitor berhasil ditambahkan",
+      });
+
+      setDataDialogOpen(false);
+      fetchCompetitors();
+    } catch (error) {
+      console.error("Error saving competitor data:", error);
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan data kompetitor",
+        variant: "destructive",
+      });
+    }
   };
 
   if (!selectedProject) {
@@ -350,7 +437,7 @@ const KompetitorAnalysis = () => {
                 <Card key={competitor.id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="flex-1">
                         <CardTitle className="text-lg">{competitor.nama_kompetitor}</CardTitle>
                         <CardDescription className="capitalize">
                           {competitor.platform_kompetitor}
@@ -375,16 +462,140 @@ const KompetitorAnalysis = () => {
                       </div>
                     </div>
                   </CardHeader>
-                  {competitor.deskripsi_kompetitor && (
-                    <CardContent>
+                  <CardContent className="space-y-4">
+                    {competitor.deskripsi_kompetitor && (
                       <p className="text-sm text-muted-foreground">
                         {competitor.deskripsi_kompetitor}
                       </p>
-                    </CardContent>
-                  )}
+                    )}
+                    
+                    {competitor.latest_data ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Followers</span>
+                          <span className="font-semibold">{competitor.latest_data.jumlah_followers.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Engagement Rate</span>
+                          <span className="font-semibold">{competitor.latest_data.rata_rata_engagement_rate}%</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Total Posts</span>
+                          <span className="font-semibold">{competitor.latest_data.total_posts}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Update: {new Date(competitor.latest_data.tanggal_data).toLocaleDateString('id-ID')}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <BarChart3 className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground mb-3">Belum ada data</p>
+                      </div>
+                    )}
+                    
+                    <Button 
+                      onClick={() => handleAddData(competitor)} 
+                      className="w-full gap-2"
+                      variant="outline"
+                    >
+                      <Activity className="h-4 w-4" />
+                      Tambah Data
+                    </Button>
+                  </CardContent>
                 </Card>
               ))}
             </div>
+
+            <Dialog open={dataDialogOpen} onOpenChange={setDataDialogOpen}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    Tambah Data untuk {selectedCompetitorForData?.nama_kompetitor}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmitData} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="tanggal">Tanggal</Label>
+                      <Input
+                        id="tanggal"
+                        type="date"
+                        value={competitorDataForm.tanggal_data}
+                        onChange={(e) => setCompetitorDataForm({ ...competitorDataForm, tanggal_data: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="followers">Jumlah Followers</Label>
+                      <Input
+                        id="followers"
+                        type="number"
+                        value={competitorDataForm.jumlah_followers}
+                        onChange={(e) => setCompetitorDataForm({ ...competitorDataForm, jumlah_followers: parseInt(e.target.value) })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="er">Engagement Rate (%)</Label>
+                      <Input
+                        id="er"
+                        type="number"
+                        step="0.01"
+                        value={competitorDataForm.rata_rata_engagement_rate}
+                        onChange={(e) => setCompetitorDataForm({ ...competitorDataForm, rata_rata_engagement_rate: parseFloat(e.target.value) })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="posts">Total Posts</Label>
+                      <Input
+                        id="posts"
+                        type="number"
+                        value={competitorDataForm.total_posts}
+                        onChange={(e) => setCompetitorDataForm({ ...competitorDataForm, total_posts: parseInt(e.target.value) })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="likes">Rata-rata Likes</Label>
+                      <Input
+                        id="likes"
+                        type="number"
+                        value={competitorDataForm.rata_rata_likes}
+                        onChange={(e) => setCompetitorDataForm({ ...competitorDataForm, rata_rata_likes: parseFloat(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="comments">Rata-rata Comments</Label>
+                      <Input
+                        id="comments"
+                        type="number"
+                        value={competitorDataForm.rata_rata_comments}
+                        onChange={(e) => setCompetitorDataForm({ ...competitorDataForm, rata_rata_comments: parseFloat(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="shares">Rata-rata Shares</Label>
+                      <Input
+                        id="shares"
+                        type="number"
+                        value={competitorDataForm.rata_rata_shares}
+                        onChange={(e) => setCompetitorDataForm({ ...competitorDataForm, rata_rata_shares: parseFloat(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setDataDialogOpen(false)}>
+                      Batal
+                    </Button>
+                    <Button type="submit">
+                      Simpan Data
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
 
             {comparisonData.length > 0 && (
               <>
