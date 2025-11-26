@@ -184,13 +184,41 @@ INSTRUKSI OUTPUT:
     const data = await response.json();
     console.log('Gemini response:', data);
 
-    // Parse Gemini response
+    // Parse Gemini response text -> JSON
     const generatedContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!generatedContent) {
-      throw new Error('No content in Gemini response');
+    if (!generatedContent || typeof generatedContent !== 'string') {
+      console.error('Gemini response missing text content');
+      return new Response(
+        JSON.stringify({ error: 'Format jawaban AI tidak sesuai. Coba lagi beberapa saat.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-    
-    const parsedResult = JSON.parse(generatedContent);
+
+    let jsonText = generatedContent.trim();
+
+    // Hapus ``` atau ```json ``` jika ada
+    if (jsonText.startsWith('```')) {
+      const firstNewline = jsonText.indexOf('\n');
+      if (firstNewline !== -1) {
+        jsonText = jsonText.slice(firstNewline + 1);
+      }
+      const lastFence = jsonText.lastIndexOf('```');
+      if (lastFence !== -1) {
+        jsonText = jsonText.slice(0, lastFence);
+      }
+      jsonText = jsonText.trim();
+    }
+
+    let parsedResult: any;
+    try {
+      parsedResult = JSON.parse(jsonText);
+    } catch (e) {
+      console.error('Failed to parse Gemini JSON:', e, 'raw:', jsonText);
+      return new Response(
+        JSON.stringify({ error: 'Gagal membaca hasil AI. Coba lagi sebentar lagi.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     return new Response(
       JSON.stringify({ 
