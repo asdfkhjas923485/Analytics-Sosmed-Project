@@ -111,12 +111,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
-    // Ignore session_not_found errors - session may have expired
-    if (error && error.message !== "Session from session_id claim in JWT does not exist") {
-      // Only show error toast for unexpected errors
+
+    // Selalu bersihkan state lokal agar redirect ke /auth berjalan mulus
+    setUser(null);
+    setSession(null);
+    setProfile(null);
+
+    if (
+      error &&
+      error.message !== "Session from session_id claim in JWT does not exist" &&
+      error.message !== "Auth session missing!"
+    ) {
       console.error("Sign out error:", error);
+      toast.error(`Gagal logout: ${error.message}`);
+      return;
     }
-    // Always show success message for logout, even if session was already expired
+
     toast.success("Logout berhasil");
   };
 
