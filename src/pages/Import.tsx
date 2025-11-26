@@ -1115,90 +1115,92 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
                   <div className="px-4 py-3 bg-muted/50 border-b">
                     <p className="text-sm font-semibold">Sample Data (3 baris pertama)</p>
                   </div>
-                  <ScrollArea className="w-full">
-                    <div className="min-w-max">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/30 hover:bg-muted/30">
-                            {previewData.headers.split(",").map((header: string, idx: number) => {
-                              const cleanHeader = header.trim();
-                              const headerMap: Record<string, string> = {
-                                'platform': 'Platform',
-                                'content_type': 'Content Type',
-                                'post_id': 'Post ID',
-                                'posted_at': 'Posted At',
-                                'reach': 'Reach',
-                                'likes': 'Likes',
-                                'comments': 'Comments',
-                                'shares': 'Shares',
-                                'saved': 'Saved',
-                                'views': 'Views',
-                                'followers': 'Followers',
-                                'caption': 'Caption'
-                              };
-                              return (
-                                <TableHead key={idx} className="font-semibold whitespace-nowrap">
-                                  {headerMap[cleanHeader.toLowerCase()] || cleanHeader}
-                                </TableHead>
-                              );
-                            })}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {previewData.sampleRows.map((row: string[], rowIdx: number) => (
-                            <TableRow key={rowIdx} className="hover:bg-muted/30">
-                              {row.map((cell: string, cellIdx: number) => {
-                                const header = previewData.headers.split(",")[cellIdx]?.trim().toLowerCase();
-                                let formattedCell = cell;
-                                
-                                // Format numbers
-                                if (['reach', 'likes', 'comments', 'shares', 'saved', 'views', 'followers'].includes(header)) {
-                                  const num = parseInt(cell);
-                                  formattedCell = !isNaN(num) ? num.toLocaleString('id-ID') : cell;
-                                }
-                                
-                                // Format dates
-                                if (header === 'posted_at') {
-                                  try {
-                                    const date = new Date(cell);
-                                    if (!isNaN(date.getTime())) {
-                                      formattedCell = date.toLocaleString('id-ID', {
-                                        year: 'numeric',
-                                        month: '2-digit',
-                                        day: '2-digit',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                      });
-                                    }
-                                  } catch (e) {
-                                    // Keep original if parsing fails
-                                  }
-                                }
-                                
-                                // Truncate caption
-                                if (header === 'caption' && formattedCell.length > 50) {
-                                  formattedCell = formattedCell.substring(0, 50) + '...';
-                                }
-                                
+                  <div className="relative">
+                    <ScrollArea className="h-[400px] w-full">
+                      <div className="min-w-max p-4">
+                        <Table>
+                          <TableHeader className="sticky top-0 bg-card z-10">
+                            <TableRow className="bg-muted/30 hover:bg-muted/30 border-b-2">
+                              {previewData.headers.split(",").map((header: string, idx: number) => {
+                                const cleanHeader = header.trim();
+                                const headerMap: Record<string, string> = {
+                                  'platform': 'Platform',
+                                  'content_type': 'Content Type',
+                                  'post_id': 'Post ID',
+                                  'posted_at': 'Posted At',
+                                  'reach': 'Reach',
+                                  'likes': 'Likes',
+                                  'comments': 'Comments',
+                                  'shares': 'Shares',
+                                  'saved': 'Saved',
+                                  'views': 'Views',
+                                  'followers': 'Followers',
+                                  'caption': 'Caption'
+                                };
                                 return (
-                                  <TableCell 
-                                    key={cellIdx} 
-                                    className={`whitespace-nowrap ${
-                                      ['reach', 'likes', 'comments', 'shares', 'saved', 'views', 'followers'].includes(header) 
-                                        ? 'text-right font-mono text-sm' 
-                                        : ''
-                                    }`}
-                                  >
-                                    {formattedCell}
-                                  </TableCell>
+                                  <TableHead key={idx} className="font-semibold whitespace-nowrap bg-muted/30 px-4 py-3">
+                                    {headerMap[cleanHeader.toLowerCase()] || cleanHeader}
+                                  </TableHead>
                                 );
                               })}
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </ScrollArea>
+                          </TableHeader>
+                          <TableBody>
+                            {previewData.sampleRows.map((row: string[], rowIdx: number) => (
+                              <TableRow key={rowIdx} className="hover:bg-muted/30">
+                                {row.map((cell: string, cellIdx: number) => {
+                                  const header = previewData.headers.split(",")[cellIdx]?.trim().toLowerCase();
+                                  let formattedCell = cell;
+                                  
+                                  // Format numbers
+                                  if (['reach', 'likes', 'comments', 'shares', 'saved', 'views', 'followers'].includes(header)) {
+                                    const num = parseInt(cell);
+                                    formattedCell = !isNaN(num) ? num.toLocaleString('id-ID') : cell;
+                                  }
+                                  
+                                  // Format dates
+                                  if (header === 'posted_at') {
+                                    try {
+                                      const date = new Date(cell);
+                                      if (!isNaN(date.getTime())) {
+                                        formattedCell = date.toLocaleString('id-ID', {
+                                          year: 'numeric',
+                                          month: '2-digit',
+                                          day: '2-digit',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        });
+                                      }
+                                    } catch (e) {
+                                      // Keep original if parsing fails
+                                    }
+                                  }
+                                  
+                                  // Truncate caption
+                                  if (header === 'caption' && formattedCell.length > 50) {
+                                    formattedCell = formattedCell.substring(0, 50) + '...';
+                                  }
+                                  
+                                  return (
+                                    <TableCell 
+                                      key={cellIdx} 
+                                      className={`whitespace-nowrap px-4 py-3 ${
+                                        ['reach', 'likes', 'comments', 'shares', 'saved', 'views', 'followers'].includes(header) 
+                                          ? 'text-right font-mono text-sm' 
+                                          : ''
+                                      }`}
+                                    >
+                                      {formattedCell}
+                                    </TableCell>
+                                  );
+                                })}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
+                  </div>
                 </div>
               </div>
             )}
