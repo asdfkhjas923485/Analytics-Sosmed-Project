@@ -1044,7 +1044,7 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
 
         {/* Preview Dialog */}
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>Preview Data Import</DialogTitle>
               <DialogDescription>
@@ -1053,71 +1053,157 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
             </DialogHeader>
             
             {previewData && (
-              <div className="space-y-4">
+              <div className="space-y-4 overflow-y-auto flex-1">
+                {/* Summary Cards */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Source</p>
-                    <p className="font-medium">{previewData.fileName}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Baris</p>
-                    <p className="font-medium">{previewData.totalRows}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Status Validasi</p>
-                    <div className="flex gap-2">
-                      <Badge className="bg-success">{previewData.validationResults.validRows} Valid</Badge>
-                      {previewData.validationResults.invalidRows > 0 && (
-                        <Badge variant="destructive">{previewData.validationResults.invalidRows} Invalid</Badge>
-                      )}
-                    </div>
-                  </div>
+                  <Card className="bg-muted/30">
+                    <CardContent className="pt-6">
+                      <p className="text-xs text-muted-foreground mb-1">Source</p>
+                      <p className="font-semibold text-lg">{previewData.fileName}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-muted/30">
+                    <CardContent className="pt-6">
+                      <p className="text-xs text-muted-foreground mb-1">Total Baris</p>
+                      <p className="font-semibold text-lg">{previewData.totalRows.toLocaleString('id-ID')}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-muted/30">
+                    <CardContent className="pt-6">
+                      <p className="text-xs text-muted-foreground mb-1">Status Validasi</p>
+                      <div className="flex gap-2 flex-wrap">
+                        <Badge className="bg-success text-success-foreground hover:bg-success/80">
+                          {previewData.validationResults.validRows} Valid
+                        </Badge>
+                        {previewData.validationResults.invalidRows > 0 && (
+                          <Badge variant="destructive">
+                            {previewData.validationResults.invalidRows} Invalid
+                          </Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
 
+                {/* Error Alert */}
                 {previewData.validationResults.invalidRows > 0 && (
-                  <Alert variant="destructive">
+                  <Alert variant="destructive" className="border-destructive/50 bg-destructive/5">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      <p className="font-medium">Ditemukan {previewData.validationResults.invalidRows} baris bermasalah:</p>
-                      <ScrollArea className="h-32 mt-2">
-                        <ul className="list-disc list-inside text-sm space-y-1">
+                      <p className="font-semibold mb-2">
+                        Ditemukan {previewData.validationResults.invalidRows} baris bermasalah
+                      </p>
+                      <ScrollArea className="h-24 pr-4">
+                        <ul className="space-y-1.5">
                           {previewData.validationResults.errors.map((err: string, idx: number) => (
-                            <li key={idx}>{err}</li>
+                            <li key={idx} className="text-xs flex items-start gap-2">
+                              <span className="text-destructive mt-0.5">•</span>
+                              <span className="flex-1">{err}</span>
+                            </li>
                           ))}
                         </ul>
                       </ScrollArea>
-                      <p className="text-sm mt-2 font-medium">Baris bermasalah akan dilewati saat import.</p>
+                      <p className="text-xs mt-3 font-medium opacity-90">
+                        💡 Baris bermasalah akan dilewati saat import
+                      </p>
                     </AlertDescription>
                   </Alert>
                 )}
 
-                <div>
-                  <p className="text-sm font-medium mb-2">Sample Data (3 baris pertama)</p>
-                  <ScrollArea className="h-64 border rounded-md">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          {previewData.headers.split(",").map((header: string, idx: number) => (
-                            <TableHead key={idx}>{header}</TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {previewData.sampleRows.map((row: string[], idx: number) => (
-                          <TableRow key={idx}>
-                            {row.map((cell: string, cellIdx: number) => (
-                              <TableCell key={cellIdx}>{cell}</TableCell>
-                            ))}
+                {/* Sample Data Table */}
+                <div className="border rounded-lg overflow-hidden bg-card">
+                  <div className="px-4 py-3 bg-muted/50 border-b">
+                    <p className="text-sm font-semibold">Sample Data (3 baris pertama)</p>
+                  </div>
+                  <ScrollArea className="w-full">
+                    <div className="min-w-max">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/30 hover:bg-muted/30">
+                            {previewData.headers.split(",").map((header: string, idx: number) => {
+                              const cleanHeader = header.trim();
+                              const headerMap: Record<string, string> = {
+                                'platform': 'Platform',
+                                'content_type': 'Content Type',
+                                'post_id': 'Post ID',
+                                'posted_at': 'Posted At',
+                                'reach': 'Reach',
+                                'likes': 'Likes',
+                                'comments': 'Comments',
+                                'shares': 'Shares',
+                                'saved': 'Saved',
+                                'views': 'Views',
+                                'followers': 'Followers',
+                                'caption': 'Caption'
+                              };
+                              return (
+                                <TableHead key={idx} className="font-semibold whitespace-nowrap">
+                                  {headerMap[cleanHeader.toLowerCase()] || cleanHeader}
+                                </TableHead>
+                              );
+                            })}
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {previewData.sampleRows.map((row: string[], rowIdx: number) => (
+                            <TableRow key={rowIdx} className="hover:bg-muted/30">
+                              {row.map((cell: string, cellIdx: number) => {
+                                const header = previewData.headers.split(",")[cellIdx]?.trim().toLowerCase();
+                                let formattedCell = cell;
+                                
+                                // Format numbers
+                                if (['reach', 'likes', 'comments', 'shares', 'saved', 'views', 'followers'].includes(header)) {
+                                  const num = parseInt(cell);
+                                  formattedCell = !isNaN(num) ? num.toLocaleString('id-ID') : cell;
+                                }
+                                
+                                // Format dates
+                                if (header === 'posted_at') {
+                                  try {
+                                    const date = new Date(cell);
+                                    if (!isNaN(date.getTime())) {
+                                      formattedCell = date.toLocaleString('id-ID', {
+                                        year: 'numeric',
+                                        month: '2-digit',
+                                        day: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      });
+                                    }
+                                  } catch (e) {
+                                    // Keep original if parsing fails
+                                  }
+                                }
+                                
+                                // Truncate caption
+                                if (header === 'caption' && formattedCell.length > 50) {
+                                  formattedCell = formattedCell.substring(0, 50) + '...';
+                                }
+                                
+                                return (
+                                  <TableCell 
+                                    key={cellIdx} 
+                                    className={`whitespace-nowrap ${
+                                      ['reach', 'likes', 'comments', 'shares', 'saved', 'views', 'followers'].includes(header) 
+                                        ? 'text-right font-mono text-sm' 
+                                        : ''
+                                    }`}
+                                  >
+                                    {formattedCell}
+                                  </TableCell>
+                                );
+                              })}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </ScrollArea>
                 </div>
               </div>
             )}
 
-            <DialogFooter>
+            <DialogFooter className="mt-4">
               <Button variant="outline" onClick={() => setShowPreview(false)}>
                 Batal
               </Button>
