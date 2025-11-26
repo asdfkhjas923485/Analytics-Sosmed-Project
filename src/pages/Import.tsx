@@ -24,6 +24,7 @@ const Import = () => {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [sheetsUrl, setSheetsUrl] = useState("");
   const [previewData, setPreviewData] = useState<any>(null);
+  const [previewSource, setPreviewSource] = useState<"csv" | "sheets" | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [datasetToDelete, setDatasetToDelete] = useState<string | null>(null);
@@ -130,6 +131,7 @@ const Import = () => {
       };
 
       setPreviewData(preview);
+      setPreviewSource("csv");
       setShowPreview(true);
     } catch (error: any) {
       toast.error(error.message);
@@ -279,7 +281,89 @@ const Import = () => {
     }
   };
 
-  // Google Sheets Import
+  // Preview Google Sheets before import
+  const handlePreviewSheets = async () => {
+    if (!sheetsUrl) {
+      toast.error("Masukkan URL Google Sheets");
+      return;
+    }
+
+    try {
+      const match = sheetsUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (!match) throw new Error("URL tidak valid");
+
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv`;
+      const response = await fetch(csvUrl);
+      if (!response.ok) throw new Error("Gagal mengambil data. Pastikan sheet publik");
+
+      const text = await response.text();
+      const lines = text.split("\n").filter((line) => line.trim());
+      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+
+      const required = ["platform", "content_type", "post_id", "posted_at", "reach", "likes", "comments", "shares", "saved", "views", "followers"];
+      const missing = required.filter((col) => !headers.includes(col));
+      if (missing.length > 0) throw new Error(`Kolom yang hilang: ${missing.join(", ")}`);
+
+      const { data: platforms } = await supabase.from("platform").select("*");
+      const { data: contentTypes } = await supabase.from("jenis_konten").select("*");
+
+      const preview = {
+        fileName: "Google Sheets",
+        totalRows: lines.length - 1,
+        headers: lines[0],
+        sampleRows: lines.slice(1, 4).map(line => line.split(",")),
+        validationResults: {
+          validRows: 0,
+          invalidRows: 0,
+          errors: [] as string[]
+        }
+      };
+
+      // Validate ALL data (not just sample)
+      let validCount = 0;
+      let invalidCount = 0;
+      const errors: string[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(",");
+        if (values.length < headers.length) {
+          errors.push(`Baris ${i}: Data tidak lengkap (${values.length} kolom, dibutuhkan ${headers.length})`);
+          invalidCount++;
+          continue;
+        }
+
+        const platformName = values[headers.indexOf("platform")]?.trim().toLowerCase();
+        const contentTypeName = values[headers.indexOf("content_type")]?.trim().toLowerCase();
+        
+        const platform = platforms?.find((p) => p.kode_platform.toLowerCase() === platformName);
+        const contentType = contentTypes?.find((c) => c.kode_jenis_konten.toLowerCase() === contentTypeName);
+
+        if (!platform) {
+          errors.push(`Baris ${i}: Platform "${platformName}" tidak ditemukan`);
+          invalidCount++;
+        } else if (!contentType) {
+          errors.push(`Baris ${i}: Content type "${contentTypeName}" tidak ditemukan`);
+          invalidCount++;
+        } else {
+          validCount++;
+        }
+      }
+
+      preview.validationResults = {
+        validRows: validCount,
+        invalidRows: invalidCount,
+        errors: errors.slice(0, 10) // Show first 10 errors
+      };
+
+      setPreviewData(preview);
+      setPreviewSource("sheets");
+      setShowPreview(true);
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  // Google Sheets Import (after preview confirmation)
   const handleSheetsImport = async () => {
     if (!sheetsUrl) {
       toast.error("Masukkan URL Google Sheets");
@@ -292,6 +376,7 @@ const Import = () => {
     }
 
     setUploading(true);
+    setShowPreview(false);
     try {
       const match = sheetsUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
       if (!match) throw new Error("URL tidak valid");
@@ -348,13 +433,26 @@ const Import = () => {
       }
 
       const posts = [];
+      const errors = [];
+      
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(",");
-        if (values.length < headers.length) continue;
+        if (values.length < headers.length) {
+          errors.push(`Baris ${i}: Data tidak lengkap`);
+          continue;
+        }
 
         const platform = platforms?.find((p) => p.kode_platform.toLowerCase() === values[headers.indexOf("platform")]?.trim().toLowerCase());
         const contentType = contentTypes?.find((c) => c.kode_jenis_konten.toLowerCase() === values[headers.indexOf("content_type")]?.trim().toLowerCase());
-        if (!platform?.id || !contentType?.id) continue;
+        
+        if (!platform?.id) {
+          errors.push(`Baris ${i}: Platform tidak ditemukan`);
+          continue;
+        }
+        if (!contentType?.id) {
+          errors.push(`Baris ${i}: Content type tidak ditemukan`);
+          continue;
+        }
 
         posts.push({
           id_proyek: selectedProject.id,
@@ -388,10 +486,10 @@ const Import = () => {
         id_dataset: dataset.id,
         status_impor: "success",
         pesan: `Imported ${posts.length} posts from Google Sheets`,
-        jumlah_baris_tidak_valid: lines.length - 1 - posts.length
+        jumlah_baris_tidak_valid: errors.length
       });
       
-      toast.success(`Berhasil import ${posts.length} posts dari Google Sheets!`);
+      toast.success(`Berhasil import ${posts.length} posts dari Google Sheets!${errors.length > 0 ? ` (${errors.length} baris dilewati)` : ""}`);
       await refreshDatasets();
       setSheetsUrl("");
     } catch (error: any) {
@@ -825,11 +923,12 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
                 disabled={uploading}
               />
               <Button 
-                className="w-full" 
-                onClick={handleSheetsImport}
+                className="w-full gap-2" 
+                onClick={handlePreviewSheets}
                 disabled={uploading || !sheetsUrl}
               >
-                {uploading ? "Mengimport..." : "Import dari Google Sheets"}
+                <Eye className="h-4 w-4" />
+                {uploading ? "Memuat..." : "Preview Data"}
               </Button>
               <p className="text-xs text-muted-foreground">
                 Pastikan sheet sudah dipublikasikan (File → Share → Publish to web)
@@ -947,22 +1046,31 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
         <Dialog open={showPreview} onOpenChange={setShowPreview}>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
-              <DialogTitle>Preview CSV Import</DialogTitle>
+              <DialogTitle>Preview Data Import</DialogTitle>
               <DialogDescription>
-                Periksa data sebelum mengupload
+                Periksa data dan validasi sebelum mengimport
               </DialogDescription>
             </DialogHeader>
             
             {previewData && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">File</p>
+                    <p className="text-sm text-muted-foreground">Source</p>
                     <p className="font-medium">{previewData.fileName}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Baris</p>
                     <p className="font-medium">{previewData.totalRows}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Status Validasi</p>
+                    <div className="flex gap-2">
+                      <Badge className="bg-success">{previewData.validationResults.validRows} Valid</Badge>
+                      {previewData.validationResults.invalidRows > 0 && (
+                        <Badge variant="destructive">{previewData.validationResults.invalidRows} Invalid</Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -971,11 +1079,14 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       <p className="font-medium">Ditemukan {previewData.validationResults.invalidRows} baris bermasalah:</p>
-                      <ul className="list-disc list-inside mt-2 text-sm">
-                        {previewData.validationResults.errors.map((err: string, idx: number) => (
-                          <li key={idx}>{err}</li>
-                        ))}
-                      </ul>
+                      <ScrollArea className="h-32 mt-2">
+                        <ul className="list-disc list-inside text-sm space-y-1">
+                          {previewData.validationResults.errors.map((err: string, idx: number) => (
+                            <li key={idx}>{err}</li>
+                          ))}
+                        </ul>
+                      </ScrollArea>
+                      <p className="text-sm mt-2 font-medium">Baris bermasalah akan dilewati saat import.</p>
                     </AlertDescription>
                   </Alert>
                 )}
@@ -1010,8 +1121,11 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
               <Button variant="outline" onClick={() => setShowPreview(false)}>
                 Batal
               </Button>
-              <Button onClick={handleCsvUpload} disabled={uploading}>
-                {uploading ? "Mengupload..." : "Lanjutkan Upload"}
+              <Button 
+                onClick={previewSource === "csv" ? handleCsvUpload : handleSheetsImport} 
+                disabled={uploading || (previewData?.validationResults.validRows === 0)}
+              >
+                {uploading ? "Mengimport..." : `Import ${previewData?.validationResults.validRows || 0} Data Valid`}
               </Button>
             </DialogFooter>
           </DialogContent>
