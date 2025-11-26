@@ -138,8 +138,13 @@ const Import = () => {
 
   // CSV Upload Handler
   const handleCsvUpload = async () => {
-    if (!csvFile || !selectedProject) {
+    if (!csvFile) {
       toast.error("Pilih file CSV terlebih dahulu");
+      return;
+    }
+    
+    if (!selectedProject?.id) {
+      toast.error("Silakan pilih project terlebih dahulu");
       return;
     }
 
@@ -276,8 +281,13 @@ const Import = () => {
 
   // Google Sheets Import
   const handleSheetsImport = async () => {
-    if (!sheetsUrl || !selectedProject) {
+    if (!sheetsUrl) {
       toast.error("Masukkan URL Google Sheets");
+      return;
+    }
+    
+    if (!selectedProject?.id) {
+      toast.error("Silakan pilih project terlebih dahulu");
       return;
     }
 
@@ -305,7 +315,7 @@ const Import = () => {
         .eq("id_proyek", selectedProject.id);
 
       // Create new dataset and set as active
-      const { data: dataset } = await supabase
+      const { data: dataset, error: datasetError } = await supabase
         .from("dataset")
         .insert({
           id_proyek: selectedProject.id,
@@ -318,8 +328,24 @@ const Import = () => {
         .select()
         .single();
 
-      const { data: platforms } = await supabase.from("platform").select("*");
-      const { data: contentTypes } = await supabase.from("jenis_konten").select("*");
+      if (datasetError || !dataset) throw new Error(`Gagal membuat dataset: ${datasetError?.message || "Unknown error"}`);
+
+      const { data: platforms, error: platformsError } = await supabase
+        .from("platform")
+        .select("*")
+        .eq("platform_aktif", true);
+        
+      const { data: contentTypes, error: contentTypesError } = await supabase
+        .from("jenis_konten")
+        .select("*")
+        .eq("jenis_konten_aktif", true);
+
+      if (platformsError || !platforms || platforms.length === 0) {
+        throw new Error("Gagal memuat data platform");
+      }
+      if (contentTypesError || !contentTypes || contentTypes.length === 0) {
+        throw new Error("Gagal memuat data jenis konten");
+      }
 
       const posts = [];
       for (let i = 1; i < lines.length; i++) {
@@ -328,7 +354,7 @@ const Import = () => {
 
         const platform = platforms?.find((p) => p.kode_platform.toLowerCase() === values[headers.indexOf("platform")]?.trim().toLowerCase());
         const contentType = contentTypes?.find((c) => c.kode_jenis_konten.toLowerCase() === values[headers.indexOf("content_type")]?.trim().toLowerCase());
-        if (!platform || !contentType) continue;
+        if (!platform?.id || !contentType?.id) continue;
 
         const reach = parseInt(values[headers.indexOf("reach")]) || 0;
         const likes = parseInt(values[headers.indexOf("likes")]) || 0;
@@ -339,7 +365,7 @@ const Import = () => {
 
         posts.push({
           id_proyek: selectedProject.id,
-          id_dataset: dataset!.id,
+          id_dataset: dataset.id,
           id_platform: platform.id,
           id_jenis_konten: contentType.id,
           kode_postingan: values[headers.indexOf("post_id")]?.trim() || `POST-${i}`,
@@ -357,11 +383,28 @@ const Import = () => {
         });
       }
 
-      await supabase.from("postingan").insert(posts);
-      toast.success(`Berhasil import ${posts.length} posts!`);
+      if (posts.length === 0) {
+        throw new Error("Tidak ada data valid yang bisa diimport dari Google Sheets");
+      }
+
+      const { error: postsError } = await supabase.from("postingan").insert(posts);
+      if (postsError) {
+        console.error("Error inserting posts from sheets:", postsError);
+        throw new Error(`Gagal menyimpan data: ${postsError.message}`);
+      }
+      
+      await supabase.from("log_impor").insert({
+        id_dataset: dataset.id,
+        status_impor: "success",
+        pesan: `Imported ${posts.length} posts from Google Sheets`,
+        jumlah_baris_tidak_valid: lines.length - 1 - posts.length
+      });
+      
+      toast.success(`Berhasil import ${posts.length} posts dari Google Sheets!`);
       await refreshDatasets();
       setSheetsUrl("");
     } catch (error: any) {
+      console.error("Google Sheets import error:", error);
       toast.error(`Error: ${error.message}`);
     } finally {
       setUploading(false);
@@ -369,7 +412,7 @@ const Import = () => {
   };
 
   const handleUseSampleData = async () => {
-    if (!selectedProject) {
+    if (!selectedProject?.id) {
       toast.error("Silakan pilih project terlebih dahulu");
       return;
     }
@@ -383,7 +426,7 @@ const Import = () => {
         .select("*")
         .eq("id_proyek", selectedProject.id)
         .eq("jenis_sumber_dataset", "sample")
-        .single();
+        .maybeSingle();
 
       if (existingSample) {
         // Activate existing sample dataset
@@ -426,10 +469,20 @@ const Import = () => {
         .neq("id", newDataset.id);
 
       // Get platform and content type IDs
-      const { data: platforms } = await supabase.from("platform").select("*");
-      const { data: contentTypes } = await supabase.from("jenis_konten").select("*");
+      const { data: platforms, error: platformsError } = await supabase
+        .from("platform")
+        .select("*")
+        .eq("platform_aktif", true);
 
-      if (!platforms || !contentTypes) throw new Error("Failed to fetch master data");
+      const { data: contentTypes, error: contentTypesError } = await supabase
+        .from("jenis_konten")
+        .select("*")
+        .eq("jenis_konten_aktif", true);
+
+      if (platformsError) throw new Error(`Gagal memuat platform: ${platformsError.message}`);
+      if (contentTypesError) throw new Error(`Gagal memuat jenis konten: ${contentTypesError.message}`);
+      if (!platforms || platforms.length === 0) throw new Error("Tidak ada platform aktif yang tersedia");
+      if (!contentTypes || contentTypes.length === 0) throw new Error("Tidak ada jenis konten aktif yang tersedia");
 
       // Generate sample posts
       const samplePosts = [];
@@ -443,6 +496,11 @@ const Import = () => {
 
         const platform = platforms[Math.floor(Math.random() * platforms.length)];
         const contentType = contentTypes[Math.floor(Math.random() * contentTypes.length)];
+        
+        if (!platform?.id || !contentType?.id) {
+          console.error("Invalid platform or content type at index", i);
+          continue;
+        }
         
         const reach = Math.floor(Math.random() * 9200) + 800;
         const views = reach + Math.floor(Math.random() * 1000);
@@ -470,11 +528,18 @@ const Import = () => {
         });
       }
 
+      if (samplePosts.length === 0) {
+        throw new Error("Gagal membuat data sample. Tidak ada postingan yang valid.");
+      }
+
       const { error: postsError } = await supabase
         .from("postingan")
         .insert(samplePosts);
 
-      if (postsError) throw postsError;
+      if (postsError) {
+        console.error("Error inserting sample posts:", postsError);
+        throw new Error(`Gagal menyimpan data sample: ${postsError.message}`);
+      }
 
       // Create import log
       await supabase
@@ -498,7 +563,10 @@ const Import = () => {
   };
 
   const handleSetActive = async (datasetId: string) => {
-    if (!selectedProject) return;
+    if (!selectedProject?.id) {
+      toast.error("Silakan pilih project terlebih dahulu");
+      return;
+    }
 
     try {
       await supabase.from("dataset").update({ dataset_aktif: false }).eq("id_proyek", selectedProject.id);
@@ -506,31 +574,55 @@ const Import = () => {
       toast.success("Dataset aktif berhasil diubah");
       await refreshDatasets();
     } catch (error: any) {
-      toast.error("Gagal mengubah dataset aktif");
+      console.error("Error setting active dataset:", error);
+      toast.error(`Gagal mengubah dataset aktif: ${error.message}`);
     }
   };
 
   const handleDeleteDataset = async () => {
-    if (!datasetToDelete || !selectedProject) return;
+    if (!datasetToDelete || !selectedProject?.id) {
+      toast.error("Data tidak valid");
+      return;
+    }
 
     try {
       setUploading(true);
       
       // Delete related posts first
-      await supabase.from("postingan").delete().eq("id_dataset", datasetToDelete);
+      const { error: postsError } = await supabase
+        .from("postingan")
+        .delete()
+        .eq("id_dataset", datasetToDelete);
+      
+      if (postsError) {
+        console.error("Error deleting posts:", postsError);
+      }
       
       // Delete import logs
-      await supabase.from("log_impor").delete().eq("id_dataset", datasetToDelete);
+      const { error: logsError } = await supabase
+        .from("log_impor")
+        .delete()
+        .eq("id_dataset", datasetToDelete);
+      
+      if (logsError) {
+        console.error("Error deleting logs:", logsError);
+      }
       
       // Delete dataset
-      await supabase.from("dataset").delete().eq("id", datasetToDelete);
+      const { error: datasetError } = await supabase
+        .from("dataset")
+        .delete()
+        .eq("id", datasetToDelete);
+      
+      if (datasetError) throw datasetError;
       
       toast.success("Dataset berhasil dihapus");
       await refreshDatasets();
       setShowDeleteDialog(false);
       setDatasetToDelete(null);
     } catch (error: any) {
-      toast.error("Gagal menghapus dataset");
+      console.error("Error deleting dataset:", error);
+      toast.error(`Gagal menghapus dataset: ${error.message}`);
     } finally {
       setUploading(false);
     }
