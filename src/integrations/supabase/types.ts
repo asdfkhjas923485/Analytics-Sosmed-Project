@@ -94,6 +94,56 @@ export type Database = {
           },
         ]
       }
+      data_kompetitor: {
+        Row: {
+          created_at: string
+          id: string
+          id_kompetitor: string
+          jumlah_followers: number
+          rata_rata_comments: number | null
+          rata_rata_engagement_rate: number | null
+          rata_rata_likes: number | null
+          rata_rata_reach: number | null
+          rata_rata_shares: number | null
+          tanggal_data: string
+          total_posts: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          id_kompetitor: string
+          jumlah_followers?: number
+          rata_rata_comments?: number | null
+          rata_rata_engagement_rate?: number | null
+          rata_rata_likes?: number | null
+          rata_rata_reach?: number | null
+          rata_rata_shares?: number | null
+          tanggal_data: string
+          total_posts?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          id_kompetitor?: string
+          jumlah_followers?: number
+          rata_rata_comments?: number | null
+          rata_rata_engagement_rate?: number | null
+          rata_rata_likes?: number | null
+          rata_rata_reach?: number | null
+          rata_rata_shares?: number | null
+          tanggal_data?: string
+          total_posts?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_kompetitor_id_kompetitor_fkey"
+            columns: ["id_kompetitor"]
+            isOneToOne: false
+            referencedRelation: "kompetitor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dataset: {
         Row: {
           created_at: string
@@ -228,6 +278,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "campaigns_project_id_fkey"
+            columns: ["id_proyek"]
+            isOneToOne: false
+            referencedRelation: "proyek"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kompetitor: {
+        Row: {
+          created_at: string
+          deskripsi_kompetitor: string | null
+          handle_kompetitor: string | null
+          id: string
+          id_proyek: string
+          nama_kompetitor: string
+          platform_kompetitor: string
+        }
+        Insert: {
+          created_at?: string
+          deskripsi_kompetitor?: string | null
+          handle_kompetitor?: string | null
+          id?: string
+          id_proyek: string
+          nama_kompetitor: string
+          platform_kompetitor: string
+        }
+        Update: {
+          created_at?: string
+          deskripsi_kompetitor?: string | null
+          handle_kompetitor?: string | null
+          id?: string
+          id_proyek?: string
+          nama_kompetitor?: string
+          platform_kompetitor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kompetitor_id_proyek_fkey"
             columns: ["id_proyek"]
             isOneToOne: false
             referencedRelation: "proyek"
@@ -516,6 +604,47 @@ export type Database = {
           nama_proyek?: string
         }
         Relationships: []
+      }
+      riwayat_export: {
+        Row: {
+          created_at: string
+          filter_export: Json | null
+          halaman_export: string
+          id: string
+          id_pengguna: string
+          id_proyek: string
+          jenis_export: string
+          nama_file: string
+        }
+        Insert: {
+          created_at?: string
+          filter_export?: Json | null
+          halaman_export: string
+          id?: string
+          id_pengguna: string
+          id_proyek: string
+          jenis_export: string
+          nama_file: string
+        }
+        Update: {
+          created_at?: string
+          filter_export?: Json | null
+          halaman_export?: string
+          id?: string
+          id_pengguna?: string
+          id_proyek?: string
+          jenis_export?: string
+          nama_file?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "riwayat_export_id_proyek_fkey"
+            columns: ["id_proyek"]
+            isOneToOne: false
+            referencedRelation: "proyek"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       target_kpi: {
         Row: {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApp } from "@/contexts/AppContext";
@@ -11,11 +11,17 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { InsightCard } from "@/components/InsightCard";
 import { NotesDialog } from "@/components/NotesDialog";
+import { ExportButton } from "@/components/ExportButton";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { selectedProject, activeDataset, loading: appLoading } = useApp();
+  
+  const chartRef1 = useRef<HTMLDivElement>(null);
+  const chartRef2 = useRef<HTMLDivElement>(null);
+  const chartRef3 = useRef<HTMLDivElement>(null);
+  
   const [kpiData, setKpiData] = useState({
     totalPosts: 0,
     avgER: 0,
@@ -304,7 +310,18 @@ const Dashboard = () => {
               Ringkasan performa konten sosial media Anda
             </p>
           </div>
-          <NotesDialog scope="global" />
+          <div className="flex gap-2">
+            {selectedProject && (
+              <ExportButton
+                projectId={selectedProject.id}
+                pageName="Dashboard"
+                data={[]}
+                chartRefs={[chartRef1, chartRef2, chartRef3]}
+                fileName="dashboard_overview"
+              />
+            )}
+            <NotesDialog scope="global" />
+          </div>
         </div>
 
         {/* KPI Cards */}
@@ -387,7 +404,7 @@ const Dashboard = () => {
         </div>
 
         {/* Weekly ER Trend */}
-        <Card>
+        <Card ref={chartRef1}>
           <CardHeader>
             <CardTitle>Tren Engagement Rate Mingguan</CardTitle>
           </CardHeader>
@@ -437,7 +454,7 @@ const Dashboard = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Platform Distribution */}
-          <Card>
+          <Card ref={chartRef2}>
             <CardHeader>
               <CardTitle>Distribusi Platform</CardTitle>
             </CardHeader>
@@ -465,7 +482,7 @@ const Dashboard = () => {
           </Card>
 
           {/* Content Type Distribution */}
-          <Card>
+          <Card ref={chartRef3}>
             <CardHeader>
               <CardTitle>Distribusi Tipe Konten</CardTitle>
             </CardHeader>

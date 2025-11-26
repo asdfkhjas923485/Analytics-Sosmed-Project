@@ -158,6 +158,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               <NavLink to="/caption-generator" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
                 AI Caption
               </NavLink>
+              <NavLink to="/kompetitor-analysis" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
+                Kompetitor
+              </NavLink>
               <NavLink to="/laporan" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
                 Laporan
               </NavLink>
