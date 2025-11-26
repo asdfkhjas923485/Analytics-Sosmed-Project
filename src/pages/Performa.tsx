@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApp } from "@/contexts/AppContext";
@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { InsightCard } from "@/components/InsightCard";
 import { SaveFilterDialog } from "@/components/SaveFilterDialog";
 import { NotesDialog } from "@/components/NotesDialog";
+import { ExportButton } from "@/components/ExportButton";
 
 type SortBy = "er" | "reach" | "engagement";
 
@@ -251,6 +252,28 @@ const Performa = () => {
             <p className="text-muted-foreground mt-2">Analisis performa setiap postingan</p>
           </div>
           <div className="flex space-x-2">
+            {selectedProject && filteredPosts.length > 0 && (
+              <ExportButton
+                projectId={selectedProject.id}
+                pageName="Content Performance"
+                data={filteredPosts.map(p => ({
+                  kode_postingan: p.kode_postingan,
+                  waktu_diposting: format(new Date(p.waktu_diposting), "dd/MM/yyyy HH:mm"),
+                  platform: p.platform?.nama_platform,
+                  jenis_konten: p.jenis_konten?.nama_jenis_konten,
+                  caption: p.teks_caption,
+                  reach: p.jumlah_reach,
+                  views: p.jumlah_views,
+                  likes: p.jumlah_likes,
+                  comments: p.jumlah_komentar,
+                  shares: p.jumlah_shares,
+                  saved: p.jumlah_saved,
+                  total_engagement: p.total_engagement,
+                  engagement_rate: p.engagement_rate_persen
+                }))}
+                fileName="content_performance"
+              />
+            )}
             <SaveFilterDialog 
               halaman="performa" 
               filterValues={{ 
