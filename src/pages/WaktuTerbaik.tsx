@@ -313,30 +313,35 @@ const WaktuTerbaik = () => {
                 <tbody>
                   {heatmapData.map((row, dayIndex) => {
                     const values = Array.from({ length: 24 }, (_, h) => row[`h${h}`] || 0);
+                    
+                    // Calculate min/max from ALL values with data across entire heatmap
                     const allValues = heatmapData.flatMap(r => 
                       Array.from({ length: 24 }, (_, h) => r[`h${h}`] || 0)
                     ).filter(v => v > 0);
+                    
+                    if (allValues.length === 0) return null;
+                    
                     const minVal = Math.min(...allValues);
                     const maxVal = Math.max(...allValues);
                     const range = maxVal - minVal;
                     
+                    // Calculate threshold values for Best/Medium/Poor
+                    const highThreshold = minVal + (range * 0.66);
+                    const mediumThreshold = minVal + (range * 0.33);
+                    
                     const getHeatmapColor = (val: number) => {
                       if (val === 0) return "bg-muted/30 text-muted-foreground/50";
                       
-                      const normalized = range > 0 ? (val - minVal) / range : 0;
-                      
-                      if (normalized >= 0.66) {
-                        // High performance - green shades
-                        const intensity = 30 + (normalized - 0.66) / 0.34 * 40;
-                        return `bg-green-500/${Math.round(intensity)} text-green-950 font-medium`;
-                      } else if (normalized >= 0.33) {
-                        // Medium performance - yellow/amber shades
-                        const intensity = 30 + (normalized - 0.33) / 0.33 * 40;
-                        return `bg-yellow-500/${Math.round(intensity)} text-yellow-950 font-medium`;
+                      // Categorize based on thresholds
+                      if (val >= highThreshold) {
+                        // Best performance - green
+                        return "bg-green-100 text-green-900 font-semibold border-green-200";
+                      } else if (val >= mediumThreshold) {
+                        // Medium performance - yellow/amber
+                        return "bg-yellow-100 text-yellow-900 font-medium border-yellow-200";
                       } else {
-                        // Low performance - red shades
-                        const intensity = 20 + (normalized / 0.33) * 30;
-                        return `bg-red-500/${Math.round(intensity)} text-red-950 font-medium`;
+                        // Poor performance - red
+                        return "bg-red-100 text-red-900 font-medium border-red-200";
                       }
                     };
                     
