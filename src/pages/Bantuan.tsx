@@ -61,6 +61,7 @@ const Bantuan = () => {
   const [myQuestionsOnly, setMyQuestionsOnly] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Calculate statistics
   const stats = {
@@ -233,8 +234,18 @@ const Bantuan = () => {
     if (myQuestionsOnly && q.id_pengguna !== user?.id) return false;
     
     // Filter by status
-    if (filter === "semua") return true;
-    return q.status === filter;
+    if (filter !== "semua" && q.status !== filter) return false;
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const matchTitle = q.judul_pertanyaan.toLowerCase().includes(query);
+      const matchContent = q.isi_pertanyaan.toLowerCase().includes(query);
+      const matchAnswer = q.jawaban?.toLowerCase().includes(query);
+      if (!matchTitle && !matchContent && !matchAnswer) return false;
+    }
+    
+    return true;
   });
 
   const handleDeleteQuestion = async (questionId: string) => {
@@ -369,6 +380,18 @@ const Bantuan = () => {
           <CardHeader>
             <div className="flex flex-col gap-4">
               <CardTitle>Riwayat Pertanyaan</CardTitle>
+              
+              {/* Search Bar */}
+              <div className="w-full">
+                <Input
+                  type="text"
+                  placeholder="Cari pertanyaan berdasarkan judul, isi, atau jawaban..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              
               <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
                 <div className="flex gap-2">
                   <Button
