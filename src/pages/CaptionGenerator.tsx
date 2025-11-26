@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useApp } from "@/contexts/AppContext";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,9 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Copy, Check, Loader2 } from "lucide-react";
+import { Sparkles, Copy, Check, Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const CaptionGenerator = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { selectedProject, loading: appLoading } = useApp();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [deskripsi, setDeskripsi] = useState("");
@@ -22,6 +29,36 @@ const CaptionGenerator = () => {
   const [tujuanCaption, setTujuanCaption] = useState("");
   const [generatedCaptions, setGeneratedCaptions] = useState<string[]>([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
+
+  if (authLoading || appLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!selectedProject) {
+    return (
+      <AppLayout>
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Project Belum Dipilih</AlertTitle>
+          <AlertDescription>
+            Silakan pilih project terlebih dahulu dari dropdown di atas untuk menggunakan fitur AI Caption Generator.
+          </AlertDescription>
+        </Alert>
+      </AppLayout>
+    );
+  }
 
   const handleGenerate = async () => {
     if (!deskripsi.trim()) {
