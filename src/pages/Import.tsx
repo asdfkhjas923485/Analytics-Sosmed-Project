@@ -356,13 +356,6 @@ const Import = () => {
         const contentType = contentTypes?.find((c) => c.kode_jenis_konten.toLowerCase() === values[headers.indexOf("content_type")]?.trim().toLowerCase());
         if (!platform?.id || !contentType?.id) continue;
 
-        const reach = parseInt(values[headers.indexOf("reach")]) || 0;
-        const likes = parseInt(values[headers.indexOf("likes")]) || 0;
-        const comments = parseInt(values[headers.indexOf("comments")]) || 0;
-        const shares = parseInt(values[headers.indexOf("shares")]) || 0;
-        const saved = parseInt(values[headers.indexOf("saved")]) || 0;
-        const engagement = likes + comments + shares + saved;
-
         posts.push({
           id_proyek: selectedProject.id,
           id_dataset: dataset.id,
@@ -370,15 +363,13 @@ const Import = () => {
           id_jenis_konten: contentType.id,
           kode_postingan: values[headers.indexOf("post_id")]?.trim() || `POST-${i}`,
           waktu_diposting: new Date(values[headers.indexOf("posted_at")]?.trim()).toISOString(),
-          jumlah_reach: reach,
-          jumlah_likes: likes,
-          jumlah_komentar: comments,
-          jumlah_shares: shares,
-          jumlah_saved: saved,
+          jumlah_reach: parseInt(values[headers.indexOf("reach")]) || 0,
+          jumlah_likes: parseInt(values[headers.indexOf("likes")]) || 0,
+          jumlah_komentar: parseInt(values[headers.indexOf("comments")]) || 0,
+          jumlah_shares: parseInt(values[headers.indexOf("shares")]) || 0,
+          jumlah_saved: parseInt(values[headers.indexOf("saved")]) || 0,
           jumlah_views: parseInt(values[headers.indexOf("views")]) || 0,
           jumlah_followers: parseInt(values[headers.indexOf("followers")]) || 0,
-          total_engagement: engagement,
-          engagement_rate_persen: reach > 0 ? parseFloat(((engagement / reach) * 100).toFixed(2)) : 0,
           teks_caption: values[headers.indexOf("caption")]?.trim() || "",
         });
       }
