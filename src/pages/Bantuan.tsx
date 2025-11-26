@@ -12,10 +12,21 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { MessageSquare, CheckCircle, Clock, Star } from "lucide-react";
+import { MessageSquare, CheckCircle, Clock, Star, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import RatingDialog from "@/components/RatingDialog";
+import { EditQuestionDialog } from "@/components/EditQuestionDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Question {
   id: string;
@@ -47,6 +58,9 @@ const Bantuan = () => {
   const [filter, setFilter] = useState<"semua" | "menunggu" | "dijawab">("semua");
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
   const [selectedQuestionForRating, setSelectedQuestionForRating] = useState<string | null>(null);
+  const [myQuestionsOnly, setMyQuestionsOnly] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null);
 
   // Calculate statistics
   const stats = {
@@ -215,9 +229,32 @@ const Bantuan = () => {
   };
 
   const filteredQuestions = questions.filter((q) => {
+    // Filter by my questions
+    if (myQuestionsOnly && q.id_pengguna !== user?.id) return false;
+    
+    // Filter by status
     if (filter === "semua") return true;
     return q.status === filter;
   });
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("pertanyaan")
+        .delete()
+        .eq("id", questionId);
+
+      if (error) throw error;
+
+      toast.success("Pertanyaan berhasil dihapus");
+      fetchQuestions();
+    } catch (error: any) {
+      console.error("Error deleting question:", error);
+      toast.error("Gagal menghapus pertanyaan");
+    } finally {
+      setDeletingQuestionId(null);
+    }
+  };
 
 
   return (
@@ -330,29 +367,38 @@ const Bantuan = () => {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4">
               <CardTitle>Riwayat Pertanyaan</CardTitle>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={filter === "semua" ? "default" : "outline"}
+                    onClick={() => setFilter("semua")}
+                  >
+                    Semua
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={filter === "menunggu" ? "default" : "outline"}
+                    onClick={() => setFilter("menunggu")}
+                  >
+                    Menunggu
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={filter === "dijawab" ? "default" : "outline"}
+                    onClick={() => setFilter("dijawab")}
+                  >
+                    Dijawab
+                  </Button>
+                </div>
                 <Button
+                  variant={myQuestionsOnly ? "default" : "outline"}
                   size="sm"
-                  variant={filter === "semua" ? "default" : "outline"}
-                  onClick={() => setFilter("semua")}
+                  onClick={() => setMyQuestionsOnly(!myQuestionsOnly)}
                 >
-                  Semua
-                </Button>
-                <Button
-                  size="sm"
-                  variant={filter === "menunggu" ? "default" : "outline"}
-                  onClick={() => setFilter("menunggu")}
-                >
-                  Menunggu
-                </Button>
-                <Button
-                  size="sm"
-                  variant={filter === "dijawab" ? "default" : "outline"}
-                  onClick={() => setFilter("dijawab")}
-                >
-                  Dijawab
+                  {myQuestionsOnly ? "Semua Pertanyaan" : "Pertanyaan Saya"}
                 </Button>
               </div>
             </div>
@@ -369,7 +415,7 @@ const Bantuan = () => {
                 {filteredQuestions.map((q) => (
                   <Card key={q.id} className="border-l-4" style={{ borderLeftColor: q.status === "dijawab" ? "hsl(var(--success))" : "hsl(var(--warning))" }}>
                     <CardHeader>
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <CardTitle className="text-lg">{q.judul_pertanyaan}</CardTitle>
@@ -392,7 +438,28 @@ const Bantuan = () => {
                             )}
                           </div>
                         </div>
-                        <Badge variant={q.status === "dijawab" ? "default" : "secondary"}>
+                        <div className="flex items-center gap-2">
+                          {q.id_pengguna === user?.id && q.status === "menunggu" && (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setEditingQuestion(q)}
+                                title="Edit pertanyaan"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDeletingQuestionId(q.id)}
+                                title="Hapus pertanyaan"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                          <Badge variant={q.status === "dijawab" ? "default" : "secondary"}>
                           {q.status === "dijawab" ? (
                             <>
                               <CheckCircle className="h-3 w-3 mr-1" />
@@ -405,6 +472,7 @@ const Bantuan = () => {
                             </>
                           )}
                         </Badge>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -487,6 +555,37 @@ const Bantuan = () => {
           fetchQuestions();
         }}
       />
+
+      {editingQuestion && (
+        <EditQuestionDialog
+          question={editingQuestion}
+          open={!!editingQuestion}
+          onOpenChange={(open) => !open && setEditingQuestion(null)}
+          onSuccess={fetchQuestions}
+        />
+      )}
+
+      <AlertDialog
+        open={!!deletingQuestionId}
+        onOpenChange={(open) => !open && setDeletingQuestionId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Pertanyaan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus pertanyaan ini? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingQuestionId && handleDeleteQuestion(deletingQuestionId)}
+            >
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
