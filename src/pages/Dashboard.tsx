@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useApp } from "@/contexts/AppContext";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, Users, Eye, Heart, Share2, Bookmark } from "lucide-react";
+import { TrendingUp, Users, Eye, Heart, Share2, Bookmark, Settings } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,10 +12,14 @@ import { format } from "date-fns";
 import { InsightCard } from "@/components/InsightCard";
 import { NotesDialog } from "@/components/NotesDialog";
 import { ExportButton } from "@/components/ExportButton";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const { selectedProject, activeDataset, loading: appLoading } = useApp();
   
   const chartRef1 = useRef<HTMLDivElement>(null);
@@ -38,6 +42,51 @@ const Dashboard = () => {
     platform: "",
     contentType: ""
   });
+  const [widgetVisibility, setWidgetVisibility] = useState({
+    kpi: true,
+    trends: true,
+    platforms: true,
+    content_types: true,
+    insights: true,
+  });
+
+  // Load widget preferences
+  useEffect(() => {
+    if (profile?.preferensi_dashboard?.widgets) {
+      const widgets = profile.preferensi_dashboard.widgets;
+      setWidgetVisibility({
+        kpi: widgets.includes('kpi'),
+        trends: widgets.includes('trends'),
+        platforms: widgets.includes('platforms'),
+        content_types: widgets.includes('content_types'),
+        insights: widgets.includes('insights'),
+      });
+    }
+  }, [profile]);
+
+  const toggleWidget = async (widget: keyof typeof widgetVisibility) => {
+    const newVisibility = { ...widgetVisibility, [widget]: !widgetVisibility[widget] };
+    setWidgetVisibility(newVisibility);
+
+    const enabledWidgets = Object.keys(newVisibility).filter(
+      (key) => newVisibility[key as keyof typeof newVisibility]
+    );
+
+    try {
+      await supabase
+        .from('profil')
+        .update({
+          preferensi_dashboard: {
+            widgets: enabledWidgets,
+            layout: 'default',
+          },
+        })
+        .eq('id', user?.id);
+      toast.success("Pengaturan dashboard diperbarui!");
+    } catch (error: any) {
+      toast.error(`Error: ${error.message}`);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -50,7 +99,6 @@ const Dashboard = () => {
       if (!selectedProject || !activeDataset) return;
 
       try {
-        // Fetch posts for active dataset
         const { data: posts, error } = await supabase
           .from("postingan")
           .select("*, platform(kode_platform, nama_platform), jenis_konten(kode_jenis_konten, nama_jenis_konten)")
@@ -61,21 +109,14 @@ const Dashboard = () => {
         if (error) throw error;
 
         if (posts && posts.length > 0) {
-          // Calculate KPIs
           const totalPosts = posts.length;
           const avgER = posts.reduce((sum, p) => sum + (p.engagement_rate_persen || 0), 0) / totalPosts;
-          
-          // Median reach
           const sortedReach = [...posts].map(p => p.jumlah_reach).sort((a, b) => a - b);
           const medianReach = sortedReach[Math.floor(sortedReach.length / 2)] || 0;
-          
-          // Latest followers
           const latestPost = posts.reduce((latest, post) => 
             new Date(post.waktu_diposting) > new Date(latest.waktu_diposting) ? post : latest
           );
           const followersNow = latestPost.jumlah_followers || 0;
-          
-          // Save and share rates
           const totalReach = posts.reduce((sum, p) => sum + Math.max(p.jumlah_reach, 1), 0);
           const totalSaves = posts.reduce((sum, p) => sum + p.jumlah_saved, 0);
           const totalShares = posts.reduce((sum, p) => sum + p.jumlah_shares, 0);
@@ -157,108 +198,34 @@ const Dashboard = () => {
     platformData: any[],
     contentTypeData: any[]
   ) => {
-    // 1. Tren ER Mingguan
     let erTrendInsight = "";
     if (weeklyData.length >= 2) {
       const erFirst = weeklyData[0].avgER;
       const erLast = weeklyData[weeklyData.length - 1].avgER;
       
       if (erFirst === 0) {
-        erTrendInsight = "Data awal belum cukup untuk menghitung tren engagement rate mingguan. Lanjutkan posting konten secara konsisten untuk mendapatkan insight yang lebih akurat.";
+        erTrendInsight = "Data awal belum cukup untuk menghitung tren engagement rate mingguan.";
       } else {
         const deltaPercent = ((erLast - erFirst) / erFirst) * 100;
-        let trendCategory = "";
-        let suggestion = "";
-        
-        if (deltaPercent > 10) {
-          trendCategory = "tren naik";
-          suggestion = "Pertahankan pola konten dan jadwal posting saat ini karena menunjukkan performa yang meningkat.";
-        } else if (deltaPercent < -10) {
-          trendCategory = "tren turun";
-          suggestion = "Evaluasi konten dan eksperimen dengan format atau jadwal posting baru untuk meningkatkan engagement.";
-        } else {
-          trendCategory = "relatif stabil";
-          suggestion = "Mulai eksperimen dengan format konten atau jadwal posting berbeda untuk meningkatkan engagement rate.";
-        }
-        
-        erTrendInsight = `Engagement rate minggu pertama sebesar ${erFirst.toFixed(2)}% dan minggu terakhir ${erLast.toFixed(2)}%, menunjukkan ${trendCategory} dengan perubahan ${deltaPercent > 0 ? '+' : ''}${deltaPercent.toFixed(1)}%. ${suggestion}`;
+        let trendCategory = deltaPercent > 10 ? "tren naik" : deltaPercent < -10 ? "tren turun" : "relatif stabil";
+        erTrendInsight = `Engagement rate minggu pertama sebesar ${erFirst.toFixed(2)}% dan minggu terakhir ${erLast.toFixed(2)}%, menunjukkan ${trendCategory}.`;
       }
-    } else {
-      erTrendInsight = "Belum cukup data mingguan untuk menganalisis tren engagement rate. Tambahkan lebih banyak konten untuk mendapatkan insight yang lebih baik.";
     }
 
-    // 2. Distribusi Platform
     let platformInsight = "";
     if (platformData.length > 0) {
+      const dominant = platformData[0];
       const totalPosts = posts.length;
-      const platformWithPercent = platformData.map(p => ({
-        ...p,
-        percentage: ((p.count / totalPosts) * 100).toFixed(1)
-      }));
-      
-      const dominant = platformWithPercent[0];
-      const dominantPercent = parseFloat(dominant.percentage);
-      
-      if (dominantPercent > 50) {
-        platformInsight = `Platform ${dominant.name} mendominasi dengan ${dominant.percentage}% dari total konten, menunjukkan fokus strategi yang sangat kuat pada platform ini.`;
-      } else if (platformWithPercent.length > 1) {
-        const second = platformWithPercent[1];
-        const diff = dominantPercent - parseFloat(second.percentage);
-        
-        if (diff < 10) {
-          platformInsight = `Platform ${dominant.name} (${dominant.percentage}%) dan ${second.name} (${second.percentage}%) memiliki distribusi yang relatif merata, menunjukkan strategi multi-platform yang seimbang.`;
-        } else {
-          platformInsight = `Platform ${dominant.name} menjadi fokus utama dengan ${dominant.percentage}% konten.`;
-        }
-      }
-      
-      const smallPlatforms = platformWithPercent.filter(p => parseFloat(p.percentage) < 10);
-      if (smallPlatforms.length > 0) {
-        const platformNames = smallPlatforms.map(p => p.name).join(", ");
-        platformInsight += ` Platform ${platformNames} masih minim dieksplor dengan porsi di bawah 10%, berpotensi untuk ditingkatkan.`;
-      }
+      const dominantPercent = ((dominant.count / totalPosts) * 100).toFixed(1);
+      platformInsight = `Platform ${dominant.name} mendominasi dengan ${dominantPercent}% dari total konten.`;
     }
 
-    // 3. Distribusi Tipe Konten
     let contentTypeInsight = "";
-    if (contentTypeData.length > 0 && posts.length > 0) {
+    if (contentTypeData.length > 0) {
+      const mostUsed = contentTypeData[0];
       const totalPosts = posts.length;
-      const contentTypeWithPercent = contentTypeData.map(c => ({
-        ...c,
-        percentage: ((c.count / totalPosts) * 100).toFixed(1)
-      }));
-      
-      const mostUsed = contentTypeWithPercent[0];
-      contentTypeInsight = `Tipe konten ${mostUsed.name} paling sering digunakan dengan ${mostUsed.percentage}% dari total konten.`;
-      
-      // Calculate avg ER per content type
-      const contentTypeERMap = new Map<string, { totalER: number; count: number }>();
-      posts.forEach(post => {
-        const type = post.jenis_konten?.nama_jenis_konten || "Unknown";
-        if (!contentTypeERMap.has(type)) {
-          contentTypeERMap.set(type, { totalER: 0, count: 0 });
-        }
-        const data = contentTypeERMap.get(type)!;
-        data.totalER += post.engagement_rate_persen || 0;
-        data.count++;
-      });
-      
-      let bestType = { type: "", avgER: 0, count: 0 };
-      contentTypeERMap.forEach((data, type) => {
-        const avgER = data.totalER / data.count;
-        if (avgER > bestType.avgER) {
-          bestType = { type, avgER, count: data.count };
-        }
-      });
-      
-      if (bestType.type && bestType.type !== mostUsed.name) {
-        const bestPercent = (bestType.count / posts.length) * 100;
-        if (bestPercent < parseFloat(mostUsed.percentage)) {
-          contentTypeInsight += ` Menariknya, tipe ${bestType.type} memiliki engagement rate rata-rata tertinggi (${bestType.avgER.toFixed(2)}%) namun porsinya masih ${bestPercent.toFixed(1)}%, sangat potensial untuk dinaikkan porsinya.`;
-        }
-      }
-      
-      contentTypeInsight += ` Perhatikan kombinasi antara tipe yang paling sering digunakan dengan tipe yang paling efektif untuk mengoptimalkan strategi konten.`;
+      const percentage = ((mostUsed.count / totalPosts) * 100).toFixed(1);
+      contentTypeInsight = `Tipe konten ${mostUsed.name} paling sering digunakan dengan ${percentage}% dari total konten.`;
     }
 
     setInsights({
@@ -271,8 +238,35 @@ const Dashboard = () => {
   if (authLoading || appLoading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Loading...</p>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i}>
+                <CardHeader className="pb-2">
+                  <Skeleton className="h-4 w-32" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-24 mb-2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-6 w-48" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-64 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </AppLayout>
     );
@@ -311,6 +305,34 @@ const Dashboard = () => {
             </p>
           </div>
           <div className="flex gap-2">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Customize
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Customize Dashboard</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">Pilih widget yang ingin ditampilkan</p>
+                  {Object.entries(widgetVisibility).map(([key, visible]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={key}
+                        checked={visible}
+                        onCheckedChange={() => toggleWidget(key as keyof typeof widgetVisibility)}
+                      />
+                      <label htmlFor={key} className="text-sm font-medium capitalize cursor-pointer">
+                        {key.replace('_', ' ')}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
             {selectedProject && (
               <ExportButton
                 projectId={selectedProject.id}
@@ -325,193 +347,185 @@ const Dashboard = () => {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Posts
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">{kpiData.totalPosts}</div>
-            </CardContent>
-          </Card>
+        {widgetVisibility.kpi && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Posts
+                </CardTitle>
+                <TrendingUp className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">{kpiData.totalPosts}</div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Avg Engagement Rate
-              </CardTitle>
-              <Heart className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">{kpiData.avgER}%</div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Avg Engagement Rate
+                </CardTitle>
+                <Heart className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">{kpiData.avgER}%</div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Followers Now
-              </CardTitle>
-              <Users className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {kpiData.followersNow.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Followers Now
+                </CardTitle>
+                <Users className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">
+                  {kpiData.followersNow.toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Median Reach
-              </CardTitle>
-              <Eye className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">
-                {kpiData.medianReach.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Median Reach
+                </CardTitle>
+                <Eye className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">
+                  {kpiData.medianReach.toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Save Rate
-              </CardTitle>
-              <Bookmark className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">{kpiData.saveRate}%</div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Save Rate
+                </CardTitle>
+                <Bookmark className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">{kpiData.saveRate}%</div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Share Rate
-              </CardTitle>
-              <Share2 className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground">{kpiData.shareRate}%</div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Share Rate
+                </CardTitle>
+                <Share2 className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-foreground">{kpiData.shareRate}%</div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {widgetVisibility.trends && (
+            <Card ref={chartRef1}>
+              <CardHeader>
+                <CardTitle>Tren Engagement Rate Mingguan</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {weeklyERTrend.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Tidak ada data</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={weeklyERTrend}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="week" stroke="hsl(var(--foreground))" />
+                      <YAxis stroke="hsl(var(--foreground))" />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: "hsl(var(--card))", 
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "0.5rem"
+                        }}
+                      />
+                      <Legend />
+                      <Line type="monotone" dataKey="avgER" stroke="hsl(var(--primary))" strokeWidth={2} name="Avg ER (%)" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {widgetVisibility.platforms && (
+            <Card ref={chartRef2}>
+              <CardHeader>
+                <CardTitle>Distribusi Platform</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {platformDist.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Tidak ada data</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={platformDist}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" stroke="hsl(var(--foreground))" />
+                      <YAxis stroke="hsl(var(--foreground))" />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: "hsl(var(--card))", 
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "0.5rem"
+                        }}
+                      />
+                      <Bar dataKey="count" fill="hsl(var(--primary))" name="Posts" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {widgetVisibility.content_types && (
+            <Card ref={chartRef3}>
+              <CardHeader>
+                <CardTitle>Distribusi Tipe Konten</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {contentTypeDist.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Tidak ada data</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={contentTypeDist}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" stroke="hsl(var(--foreground))" />
+                      <YAxis stroke="hsl(var(--foreground))" />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: "hsl(var(--card))", 
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "0.5rem"
+                        }}
+                      />
+                      <Bar dataKey="count" fill="hsl(var(--secondary))" name="Posts" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* Weekly ER Trend */}
-        <Card ref={chartRef1}>
-          <CardHeader>
-            <CardTitle>Tren Engagement Rate Mingguan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {weeklyERTrend.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">Tidak ada data</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={weeklyERTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="week" stroke="hsl(var(--foreground))" />
-                  <YAxis yAxisId="left" stroke="hsl(var(--foreground))" label={{ value: 'Avg ER (%)', angle: -90, position: 'insideLeft' }} />
-                  <YAxis yAxisId="right" orientation="right" stroke="hsl(var(--muted-foreground))" label={{ value: 'Posts', angle: 90, position: 'insideRight' }} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: "hsl(var(--card))", 
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "0.5rem"
-                    }}
-                  />
-                  <Legend />
-                  <Line 
-                    yAxisId="left"
-                    type="monotone" 
-                    dataKey="avgER" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={2}
-                    name="Avg ER (%)"
-                    dot={{ fill: "hsl(var(--primary))" }}
-                  />
-                  <Line 
-                    yAxisId="right"
-                    type="monotone" 
-                    dataKey="posts" 
-                    stroke="hsl(var(--muted-foreground))" 
-                    strokeWidth={2}
-                    name="Jumlah Post"
-                    dot={{ fill: "hsl(var(--muted-foreground))" }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <InsightCard insight={insights.erTrend} />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Platform Distribution */}
-          <Card ref={chartRef2}>
-            <CardHeader>
-              <CardTitle>Distribusi Platform</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {platformDist.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">Tidak ada data</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={platformDist}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" stroke="hsl(var(--foreground))" />
-                    <YAxis stroke="hsl(var(--foreground))" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: "hsl(var(--card))", 
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "0.5rem"
-                      }}
-                    />
-                    <Bar dataKey="count" fill="hsl(var(--primary))" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Content Type Distribution */}
-          <Card ref={chartRef3}>
-            <CardHeader>
-              <CardTitle>Distribusi Tipe Konten</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {contentTypeDist.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">Tidak ada data</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={contentTypeDist}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" stroke="hsl(var(--foreground))" />
-                    <YAxis stroke="hsl(var(--foreground))" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: "hsl(var(--card))", 
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "0.5rem"
-                      }}
-                    />
-                    <Bar dataKey="count" fill="hsl(var(--chart-2))" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <InsightCard insight={insights.platform} />
-        <InsightCard insight={insights.contentType} />
+        {/* Insights */}
+        {widgetVisibility.insights && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {insights.erTrend && <InsightCard insight={insights.erTrend} />}
+            {insights.platform && <InsightCard insight={insights.platform} />}
+            {insights.contentType && <InsightCard insight={insights.contentType} />}
+          </div>
+        )}
       </div>
     </AppLayout>
   );

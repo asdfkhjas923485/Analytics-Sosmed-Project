@@ -562,22 +562,31 @@ export type Database = {
       }
       profil: {
         Row: {
+          bahasa: string | null
           created_at: string
+          foto_profil_url: string | null
           id: string
           nama_lengkap: string | null
           peran: Database["public"]["Enums"]["app_role"]
+          preferensi_dashboard: Json | null
         }
         Insert: {
+          bahasa?: string | null
           created_at?: string
+          foto_profil_url?: string | null
           id: string
           nama_lengkap?: string | null
           peran?: Database["public"]["Enums"]["app_role"]
+          preferensi_dashboard?: Json | null
         }
         Update: {
+          bahasa?: string | null
           created_at?: string
+          foto_profil_url?: string | null
           id?: string
           nama_lengkap?: string | null
           peran?: Database["public"]["Enums"]["app_role"]
+          preferensi_dashboard?: Json | null
         }
         Relationships: []
       }

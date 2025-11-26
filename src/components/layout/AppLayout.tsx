@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BarChart3, LogOut, User, Plus, Bell } from "lucide-react";
+import { BarChart3, LogOut, User, Plus, Bell, Settings } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Badge } from "@/components/ui/badge";
 
@@ -206,6 +206,10 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                   {profile?.nama_lengkap || user?.email}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/profile-settings')}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Pengaturan Profil
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
