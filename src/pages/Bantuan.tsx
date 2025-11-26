@@ -154,7 +154,11 @@ const Bantuan = () => {
           .update({ nama_lengkap: nama.trim() })
           .eq("id", user?.id);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error("Error updating profile:", profileError);
+          toast.error("Gagal mengupdate nama profil");
+          throw profileError;
+        }
       }
 
       // Insert question and get the created record
@@ -163,14 +167,18 @@ const Bantuan = () => {
         .insert({
           id_pengguna: user?.id,
           id_proyek: selectedProject.id,
-          judul_pertanyaan: judul,
-          isi_pertanyaan: pertanyaan,
+          judul_pertanyaan: judul.trim(),
+          isi_pertanyaan: pertanyaan.trim(),
           status: "menunggu",
         })
         .select("id")
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error inserting question:", error);
+        toast.error(`Gagal menambah pertanyaan: ${error.message}`);
+        throw error;
+      }
 
       // Trigger admin notification email (non-blocking for user)
       if (insertedQuestion?.id) {
