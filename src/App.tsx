@@ -21,6 +21,7 @@ import BantuanAdmin from "./pages/BantuanAdmin";
 import AdminTest from "./pages/AdminTest";
 import TargetKPI from "./pages/TargetKPI";
 import Kampanye from "./pages/Kampanye";
+import CaptionGenerator from "./pages/CaptionGenerator";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
               <Route path="/bantuan-admin" element={<BantuanAdmin />} />
               <Route path="/target-kpi" element={<TargetKPI />} />
               <Route path="/kampanye" element={<Kampanye />} />
+              <Route path="/caption-generator" element={<CaptionGenerator />} />
               <Route path="/admin-test" element={<AdminTest />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
