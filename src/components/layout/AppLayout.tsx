@@ -22,6 +22,7 @@ import {
 import { BarChart3, LogOut, User, Plus, Bell } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { Badge } from "@/components/ui/badge";
+import { Breadcrumbs } from "./Breadcrumbs";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -344,6 +345,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
+        <div className="mb-4">
+          <Breadcrumbs />
+        </div>
         {children}
       </main>
     </div>
