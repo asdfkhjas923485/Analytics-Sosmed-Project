@@ -23,7 +23,6 @@ import TargetKPI from "./pages/TargetKPI";
 import Kampanye from "./pages/Kampanye";
 import CaptionGenerator from "./pages/CaptionGenerator";
 import KompetitorAnalysis from "./pages/KompetitorAnalysis";
-import ProfileSettings from "./pages/ProfileSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,7 +54,6 @@ const App = () => (
               <Route path="/kampanye" element={<Kampanye />} />
               <Route path="/caption-generator" element={<CaptionGenerator />} />
               <Route path="/kompetitor-analysis" element={<KompetitorAnalysis />} />
-              <Route path="/profile-settings" element={<ProfileSettings />} />
               <Route path="/admin-test" element={<AdminTest />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
