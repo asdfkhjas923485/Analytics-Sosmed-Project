@@ -140,36 +140,93 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               <NavLink to="/dashboard" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
                 Dashboard
               </NavLink>
-              <NavLink to="/performa" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                Performa
-              </NavLink>
-              <NavLink to="/waktu-terbaik" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                Waktu Terbaik
-              </NavLink>
-              <NavLink to="/audiens" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                Audiens
-              </NavLink>
-              <NavLink to="/target-kpi" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                Target KPI
-              </NavLink>
-              <NavLink to="/kampanye" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                Kampanye
-              </NavLink>
-              <NavLink to="/caption-generator" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                AI Caption
-              </NavLink>
-              <NavLink to="/kompetitor-analysis" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                Kompetitor
-              </NavLink>
-              <NavLink to="/laporan" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                Laporan
-              </NavLink>
-              <NavLink to="/perbandingan" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                Perbandingan
-              </NavLink>
-              <NavLink to="/ringkasan-insight" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                Ringkasan Insight
-              </NavLink>
+              
+              {/* Analytics Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className={`px-3 py-2 h-auto text-sm font-medium ${['/performa', '/waktu-terbaik', '/audiens', '/ringkasan-insight'].includes(location.pathname) ? 'bg-muted' : ''}`}
+                  >
+                    Analitik
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="bg-card">
+                  <DropdownMenuItem onClick={() => navigate('/performa')}>
+                    Performa
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/waktu-terbaik')}>
+                    Waktu Terbaik
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/audiens')}>
+                    Audiens
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/ringkasan-insight')}>
+                    Ringkasan Insight
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Planning Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className={`px-3 py-2 h-auto text-sm font-medium ${['/target-kpi', '/kampanye'].includes(location.pathname) ? 'bg-muted' : ''}`}
+                  >
+                    Perencanaan
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="bg-card">
+                  <DropdownMenuItem onClick={() => navigate('/target-kpi')}>
+                    Target KPI
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/kampanye')}>
+                    Kampanye
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Tools Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className={`px-3 py-2 h-auto text-sm font-medium ${['/caption-generator', '/kompetitor-analysis'].includes(location.pathname) ? 'bg-muted' : ''}`}
+                  >
+                    Tools
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="bg-card">
+                  <DropdownMenuItem onClick={() => navigate('/caption-generator')}>
+                    AI Caption
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/kompetitor-analysis')}>
+                    Kompetitor
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Reports Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className={`px-3 py-2 h-auto text-sm font-medium ${['/laporan', '/perbandingan'].includes(location.pathname) ? 'bg-muted' : ''}`}
+                  >
+                    Laporan
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="bg-card">
+                  <DropdownMenuItem onClick={() => navigate('/laporan')}>
+                    Laporan
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/perbandingan')}>
+                    Perbandingan
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               {profile?.peran !== "admin" && (
                 <NavLink to="/bantuan" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors relative" activeClassName="bg-muted">
                   <span className="flex items-center gap-2">
@@ -182,15 +239,26 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                   </span>
                 </NavLink>
               )}
+              
               {profile?.peran === "admin" && (
-                <>
-                  <NavLink to="/platform" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                    Platform
-                  </NavLink>
-                  <NavLink to="/bantuan-admin" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                    Kelola Q&A
-                  </NavLink>
-                </>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      className={`px-3 py-2 h-auto text-sm font-medium ${['/platform', '/bantuan-admin'].includes(location.pathname) ? 'bg-muted' : ''}`}
+                    >
+                      Admin
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="bg-card">
+                    <DropdownMenuItem onClick={() => navigate('/platform')}>
+                      Platform
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/bantuan-admin')}>
+                      Kelola Q&A
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </nav>
 
