@@ -411,6 +411,86 @@ const Import = () => {
     }
   };
 
+  const generateSamplePostsForDataset = async (datasetId: string, projectId: string) => {
+    // Get platform and content type IDs
+    const { data: platforms, error: platformsError } = await supabase
+      .from("platform")
+      .select("*")
+      .eq("platform_aktif", true);
+
+    const { data: contentTypes, error: contentTypesError } = await supabase
+      .from("jenis_konten")
+      .select("*")
+      .eq("jenis_konten_aktif", true);
+
+    if (platformsError) throw new Error(`Gagal memuat platform: ${platformsError.message}`);
+    if (contentTypesError) throw new Error(`Gagal memuat jenis konten: ${contentTypesError.message}`);
+    if (!platforms || platforms.length === 0) throw new Error("Tidak ada platform aktif yang tersedia");
+    if (!contentTypes || contentTypes.length === 0) throw new Error("Tidak ada jenis konten aktif yang tersedia");
+
+    // Generate sample posts
+    const samplePosts: any[] = [];
+    const startDate = new Date("2025-04-28");
+    const endDate = new Date("2025-06-25");
+
+    for (let i = 1; i <= 50; i++) {
+      const randomDate = new Date(startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime()));
+      const randomHour = Math.floor(Math.random() * 24);
+      randomDate.setHours(randomHour, Math.floor(Math.random() * 60), 0, 0);
+
+      const platform = platforms[Math.floor(Math.random() * platforms.length)];
+      const contentType = contentTypes[Math.floor(Math.random() * contentTypes.length)];
+
+      if (!platform?.id || !contentType?.id) {
+        console.error("Invalid platform or content type at index", i);
+        continue;
+      }
+
+      const reach = Math.floor(Math.random() * 9200) + 800;
+      const views = reach + Math.floor(Math.random() * 1000);
+      const likes = Math.floor(Math.random() * 750) + 50;
+      const comments = Math.floor(Math.random() * 98) + 2;
+      const shares = Math.floor(Math.random() * 80);
+      const saved = Math.floor(Math.random() * 80);
+      const followers = Math.floor(Math.random() * 200) + 700;
+
+      samplePosts.push({
+        id_proyek: projectId,
+        id_dataset: datasetId,
+        id_platform: platform.id,
+        id_jenis_konten: contentType.id,
+        kode_postingan: `P${String(i).padStart(3, "0")}`,
+        waktu_diposting: randomDate.toISOString(),
+        teks_caption: `Sample post ${i}`,
+        jumlah_likes: likes,
+        jumlah_komentar: comments,
+        jumlah_shares: shares,
+        jumlah_saved: saved,
+        jumlah_views: views,
+        jumlah_reach: reach,
+        jumlah_followers: followers,
+      });
+    }
+
+    if (samplePosts.length === 0) {
+      throw new Error("Gagal membuat data sample. Tidak ada postingan yang valid.");
+    }
+
+    const { error: postsError } = await supabase.from("postingan").insert(samplePosts);
+
+    if (postsError) {
+      console.error("Error inserting sample posts:", postsError);
+      throw new Error(`Gagal menyimpan data sample: ${postsError.message}`);
+    }
+
+    await supabase.from("log_impor").insert({
+      id_dataset: datasetId,
+      status_impor: "success",
+      pesan: "Sample data generated successfully",
+      jumlah_baris_tidak_valid: 0,
+    });
+  };
+
   const handleUseSampleData = async () => {
     if (!selectedProject?.id) {
       toast.error("Silakan pilih project terlebih dahulu");
@@ -429,6 +509,18 @@ const Import = () => {
         .maybeSingle();
 
       if (existingSample) {
+        // Jika dataset sample sudah ada tapi belum punya postingan, generate dulu
+        const { count, error: countError } = await supabase
+          .from("postingan")
+          .select("id", { count: "exact", head: true })
+          .eq("id_dataset", existingSample.id);
+
+        if (countError) {
+          console.error("Error checking existing sample posts:", countError);
+        } else if (!count || count === 0) {
+          await generateSamplePostsForDataset(existingSample.id, selectedProject.id);
+        }
+
         // Activate existing sample dataset
         await supabase
           .from("dataset")
@@ -454,12 +546,12 @@ const Import = () => {
           nama_dataset: "Sample Dataset Mei-Juni 2025",
           jenis_sumber_dataset: "sample",
           dataset_aktif: true,
-          jumlah_baris_dataset: 50
+          jumlah_baris_dataset: 50,
         })
         .select()
         .single();
 
-      if (datasetError) throw datasetError;
+      if (datasetError || !newDataset) throw datasetError || new Error("Gagal membuat dataset sample");
 
       // Deactivate other datasets
       await supabase
@@ -468,88 +560,7 @@ const Import = () => {
         .eq("id_proyek", selectedProject.id)
         .neq("id", newDataset.id);
 
-      // Get platform and content type IDs
-      const { data: platforms, error: platformsError } = await supabase
-        .from("platform")
-        .select("*")
-        .eq("platform_aktif", true);
-
-      const { data: contentTypes, error: contentTypesError } = await supabase
-        .from("jenis_konten")
-        .select("*")
-        .eq("jenis_konten_aktif", true);
-
-      if (platformsError) throw new Error(`Gagal memuat platform: ${platformsError.message}`);
-      if (contentTypesError) throw new Error(`Gagal memuat jenis konten: ${contentTypesError.message}`);
-      if (!platforms || platforms.length === 0) throw new Error("Tidak ada platform aktif yang tersedia");
-      if (!contentTypes || contentTypes.length === 0) throw new Error("Tidak ada jenis konten aktif yang tersedia");
-
-      // Generate sample posts
-      const samplePosts = [];
-      const startDate = new Date("2025-04-28");
-      const endDate = new Date("2025-06-25");
-
-      for (let i = 1; i <= 50; i++) {
-        const randomDate = new Date(startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime()));
-        const randomHour = Math.floor(Math.random() * 24);
-        randomDate.setHours(randomHour, Math.floor(Math.random() * 60), 0, 0);
-
-        const platform = platforms[Math.floor(Math.random() * platforms.length)];
-        const contentType = contentTypes[Math.floor(Math.random() * contentTypes.length)];
-        
-        if (!platform?.id || !contentType?.id) {
-          console.error("Invalid platform or content type at index", i);
-          continue;
-        }
-        
-        const reach = Math.floor(Math.random() * 9200) + 800;
-        const views = reach + Math.floor(Math.random() * 1000);
-        const likes = Math.floor(Math.random() * 750) + 50;
-        const comments = Math.floor(Math.random() * 98) + 2;
-        const shares = Math.floor(Math.random() * 80);
-        const saved = Math.floor(Math.random() * 80);
-        const followers = Math.floor(Math.random() * 200) + 700;
-
-        samplePosts.push({
-          id_proyek: selectedProject.id,
-          id_dataset: newDataset.id,
-          id_platform: platform.id,
-          id_jenis_konten: contentType.id,
-          kode_postingan: `P${String(i).padStart(3, "0")}`,
-          waktu_diposting: randomDate.toISOString(),
-          teks_caption: `Sample post ${i}`,
-          jumlah_likes: likes,
-          jumlah_komentar: comments,
-          jumlah_shares: shares,
-          jumlah_saved: saved,
-          jumlah_views: views,
-          jumlah_reach: reach,
-          jumlah_followers: followers
-        });
-      }
-
-      if (samplePosts.length === 0) {
-        throw new Error("Gagal membuat data sample. Tidak ada postingan yang valid.");
-      }
-
-      const { error: postsError } = await supabase
-        .from("postingan")
-        .insert(samplePosts);
-
-      if (postsError) {
-        console.error("Error inserting sample posts:", postsError);
-        throw new Error(`Gagal menyimpan data sample: ${postsError.message}`);
-      }
-
-      // Create import log
-      await supabase
-        .from("log_impor")
-        .insert({
-          id_dataset: newDataset.id,
-          status_impor: "success",
-          pesan: "Sample data generated successfully",
-          jumlah_baris_tidak_valid: 0
-        });
+      await generateSamplePostsForDataset(newDataset.id, selectedProject.id);
 
       toast.success("Data sample berhasil dibuat!");
       await refreshDatasets();
