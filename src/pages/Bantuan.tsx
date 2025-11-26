@@ -147,15 +147,17 @@ const Bantuan = () => {
 
     setSubmitting(true);
     try {
-      // Update profile name if not set
-      if (!profile?.nama_lengkap || profile.nama_lengkap !== nama.trim()) {
-        const { error: profileError } = await supabase
-          .from("profil")
-          .update({ nama_lengkap: nama.trim() })
-          .eq("id", user?.id);
+      // Ensure profile exists with name
+      const { error: profileError } = await supabase
+        .from("profil")
+        .upsert({ 
+          id: user?.id!,
+          nama_lengkap: nama.trim() 
+        }, {
+          onConflict: "id"
+        });
 
-        if (profileError) throw profileError;
-      }
+      if (profileError) throw profileError;
 
       // Insert question
       const { error } = await supabase.from("pertanyaan").insert({
