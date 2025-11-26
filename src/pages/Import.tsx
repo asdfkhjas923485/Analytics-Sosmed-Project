@@ -92,7 +92,7 @@ const Import = () => {
         fileName: csvFile.name,
         totalRows: lines.length - 1,
         headers: lines[0],
-        sampleRows: lines.slice(1, 4).map(line => line.split(",")),
+        sampleRows: lines.slice(1).map(line => line.split(",")), // Show all rows
         validationResults: {
           validRows: 0,
           invalidRows: 0,
@@ -311,7 +311,7 @@ const Import = () => {
         fileName: "Google Sheets",
         totalRows: lines.length - 1,
         headers: lines[0],
-        sampleRows: lines.slice(1, 4).map(line => line.split(",")),
+        sampleRows: lines.slice(1).map(line => line.split(",")), // Show all rows
         validationResults: {
           validRows: 0,
           invalidRows: 0,
@@ -1113,7 +1113,7 @@ tiktok,video,POST002,2025-01-15 14:00:00,8000,400,50,25,35,8500,1500,Contoh capt
                 {/* Sample Data Table */}
                 <div className="border rounded-lg overflow-hidden bg-card">
                   <div className="px-4 py-3 bg-muted/50 border-b">
-                    <p className="text-sm font-semibold">Sample Data (3 baris pertama)</p>
+                    <p className="text-sm font-semibold">Preview Semua Data ({previewData.sampleRows.length} baris)</p>
                   </div>
                   <div className="relative">
                     <ScrollArea className="h-[400px] w-full">
