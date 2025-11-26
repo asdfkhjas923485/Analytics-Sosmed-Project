@@ -109,7 +109,7 @@ PENTING: Jangan menciptakan angka, harga, promo, atau klaim yang tidak disebutka
       'konversi': 'Fokus untuk konversi/penjualan. Jelaskan benefit produk/layanan dan ajak untuk action (beli, daftar, dll).'
     };
 
-    const tujuanDesc = body.tujuan_caption 
+    const tujuanDesc = body.tujuan_caption && body.tujuan_caption !== 'none'
       ? purposeGuide[body.tujuan_caption] || ''
       : '';
 

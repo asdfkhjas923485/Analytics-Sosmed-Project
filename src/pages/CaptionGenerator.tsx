@@ -26,7 +26,7 @@ const CaptionGenerator = () => {
   const [panjangCaption, setPanjangCaption] = useState("sedang");
   const [opsiHashtag, setOpsiHashtag] = useState("seperlunya");
   const [opsiEmoji, setOpsiEmoji] = useState("sedikit");
-  const [tujuanCaption, setTujuanCaption] = useState("");
+  const [tujuanCaption, setTujuanCaption] = useState("none");
   const [generatedCaptions, setGeneratedCaptions] = useState<string[]>([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
@@ -282,7 +282,7 @@ const CaptionGenerator = () => {
                   <SelectValue placeholder="Pilih tujuan caption" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tidak ada preferensi</SelectItem>
+                  <SelectItem value="none">Tidak ada preferensi</SelectItem>
                   <SelectItem value="awareness">Awareness / Branding</SelectItem>
                   <SelectItem value="interaksi">Mengajak Interaksi</SelectItem>
                   <SelectItem value="traffic">Traffic ke Link</SelectItem>
