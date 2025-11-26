@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,8 +38,8 @@ serve(async (req) => {
       );
     }
 
-    if (!openAIApiKey) {
-      console.error('OPENAI_API_KEY not configured');
+    if (!geminiApiKey) {
+      console.error('GEMINI_API_KEY not configured');
       return new Response(
         JSON.stringify({ error: 'API key tidak dikonfigurasi' }), 
         { 
@@ -49,8 +49,8 @@ serve(async (req) => {
       );
     }
 
-    // Susun system prompt
-    const systemPrompt = `Kamu adalah asisten penulis caption Instagram untuk brand UMKM dan content creator Indonesia. 
+    // Susun system instruction
+    const systemInstruction = `Kamu adalah asisten penulis caption Instagram untuk brand UMKM dan content creator Indonesia. 
 Tugas kamu adalah membuat caption yang enak dibaca, natural, tidak kaku, dan relevan dengan deskripsi konten yang diberikan.
 Caption harus dalam Bahasa Indonesia yang baik, boleh campur sedikit English jika sesuai dengan gaya yang diminta.
 PENTING: Jangan menciptakan angka, harga, promo, atau klaim yang tidak disebutkan dalam deskripsi.`;
@@ -113,8 +113,10 @@ PENTING: Jangan menciptakan angka, harga, promo, atau klaim yang tidak disebutka
       ? purposeGuide[body.tujuan_caption] || ''
       : '';
 
-    // Susun user prompt
-    const userPrompt = `Buat 3 opsi caption Instagram yang berbeda berdasarkan informasi berikut:
+    // Susun prompt lengkap
+    const fullPrompt = `${systemInstruction}
+
+Buat 3 opsi caption Instagram yang berbeda berdasarkan informasi berikut:
 
 DESKRIPSI KONTEN:
 ${body.deskripsi}
@@ -140,27 +142,35 @@ INSTRUKSI OUTPUT:
 - Pastikan caption natural, tidak kaku, dan enak dibaca
 - JANGAN membuat harga, angka promo, atau klaim yang tidak ada di deskripsi`;
 
-    console.log('Calling OpenAI API...');
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4.1-mini-2025-04-14',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        max_completion_tokens: 2000,
-        response_format: { type: "json_object" }
-      }),
-    });
+    console.log('Calling Gemini API...');
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: fullPrompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 1,
+            maxOutputTokens: 2048,
+            responseMimeType: "application/json"
+          }
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
+      console.error('Gemini API error:', response.status, errorText);
       return new Response(
         JSON.stringify({ 
           error: 'Gagal menghubungi AI. Silakan coba lagi sebentar lagi.' 
@@ -173,9 +183,14 @@ INSTRUKSI OUTPUT:
     }
 
     const data = await response.json();
-    console.log('OpenAI response:', data);
+    console.log('Gemini response:', data);
 
-    const generatedContent = data.choices[0].message.content;
+    // Parse Gemini response
+    const generatedContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!generatedContent) {
+      throw new Error('No content in Gemini response');
+    }
+    
     const parsedResult = JSON.parse(generatedContent);
 
     return new Response(
