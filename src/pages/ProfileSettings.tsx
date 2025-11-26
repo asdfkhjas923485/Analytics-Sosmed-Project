@@ -13,7 +13,7 @@ import { Upload, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProfileSettings() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -70,7 +70,10 @@ export default function ProfileSettings() {
 
       if (updateError) throw updateError;
 
-      toast.success("Foto profil berhasil diperbarui!");
+      // Refresh profile to update context
+      await refreshProfile();
+      
+      toast.success("Foto profil berhasil diperbarui! Perubahan akan terlihat di header.");
     } catch (error: any) {
       toast.error(`Error uploading avatar: ${error.message}`);
     } finally {
@@ -92,7 +95,10 @@ export default function ProfileSettings() {
 
       if (error) throw error;
 
-      toast.success("Profil berhasil diperbarui!");
+      // Refresh profile to update context
+      await refreshProfile();
+      
+      toast.success("Profil berhasil diperbarui! Perubahan tersimpan.");
     } catch (error: any) {
       toast.error(`Error: ${error.message}`);
     } finally {
@@ -145,9 +151,9 @@ export default function ProfileSettings() {
           <CardContent className="space-y-6">
             {/* Avatar Upload */}
             <div className="flex items-center gap-6">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={avatarUrl} />
-                <AvatarFallback>
+              <Avatar className="h-24 w-24 border-2 border-border">
+                <AvatarImage src={avatarUrl} key={avatarUrl} />
+                <AvatarFallback className="text-2xl">
                   {namaLengkap?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
@@ -173,6 +179,11 @@ export default function ProfileSettings() {
                 <p className="text-sm text-muted-foreground mt-2">
                   JPG, PNG maksimal 2MB
                 </p>
+                {avatarUrl && (
+                  <p className="text-sm text-green-600 dark:text-green-400 mt-1">
+                    ✓ Foto profil terupload - cek di header atas
+                  </p>
+                )}
               </div>
             </div>
 
@@ -210,6 +221,9 @@ export default function ProfileSettings() {
                   <SelectItem value="en">English</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-sm text-muted-foreground">
+                Bahasa saat ini: {bahasa === "id" ? "Bahasa Indonesia" : "English"}
+              </p>
             </div>
 
             {/* Save Button */}
