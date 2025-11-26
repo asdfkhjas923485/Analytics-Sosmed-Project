@@ -113,10 +113,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { error } = await supabase.auth.signOut();
     // Ignore session_not_found errors - session may have expired
     if (error && error.message !== "Session from session_id claim in JWT does not exist") {
-      toast.error(error.message);
-    } else {
-      toast.success("Logout berhasil");
+      // Only show error toast for unexpected errors
+      console.error("Sign out error:", error);
     }
+    // Always show success message for logout, even if session was already expired
+    toast.success("Logout berhasil");
   };
 
   return (
