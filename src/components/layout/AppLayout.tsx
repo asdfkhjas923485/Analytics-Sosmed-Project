@@ -1,8 +1,9 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApp } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
   SelectContent,
@@ -18,8 +19,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BarChart3, LogOut, User, Plus } from "lucide-react";
+import { BarChart3, LogOut, User, Plus, Bell } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { Badge } from "@/components/ui/badge";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -38,6 +40,74 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     activeDataset,
     setActiveDataset 
   } = useApp();
+  
+  const [unreadAnswersCount, setUnreadAnswersCount] = useState(0);
+
+  // Fetch unread answered questions count
+  useEffect(() => {
+    if (!user || profile?.peran === "admin") return;
+
+    const fetchUnreadCount = async () => {
+      try {
+        // Get all answered questions for this user
+        const { data: answeredQuestions, error } = await supabase
+          .from("pertanyaan")
+          .select("id, updated_at, rating")
+          .eq("id_pengguna", user.id)
+          .eq("status", "dijawab");
+
+        if (error) throw error;
+
+        // Get last viewed timestamp from localStorage
+        const lastViewedKey = `bantuan_last_viewed_${user.id}`;
+        const lastViewed = localStorage.getItem(lastViewedKey);
+        const lastViewedDate = lastViewed ? new Date(lastViewed) : new Date(0);
+
+        // Count questions answered after last view that don't have rating yet
+        const unreadCount = answeredQuestions?.filter(q => 
+          new Date(q.updated_at) > lastViewedDate && !q.rating
+        ).length || 0;
+
+        setUnreadAnswersCount(unreadCount);
+      } catch (error) {
+        console.error("Error fetching unread count:", error);
+      }
+    };
+
+    fetchUnreadCount();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel("answered_questions_notif")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "pertanyaan",
+          filter: `id_pengguna=eq.${user.id}`,
+        },
+        (payload: any) => {
+          if (payload.new.status === "dijawab" && payload.old.status === "menunggu") {
+            fetchUnreadCount();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, profile]);
+
+  // Update last viewed when user visits Bantuan page
+  useEffect(() => {
+    if (location.pathname === "/bantuan" && user) {
+      const lastViewedKey = `bantuan_last_viewed_${user.id}`;
+      localStorage.setItem(lastViewedKey, new Date().toISOString());
+      setUnreadAnswersCount(0);
+    }
+  }, [location.pathname, user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -98,8 +168,15 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                 Ringkasan Insight
               </NavLink>
               {profile?.peran !== "admin" && (
-                <NavLink to="/bantuan" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors" activeClassName="bg-muted">
-                  Bantuan
+                <NavLink to="/bantuan" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-muted transition-colors relative" activeClassName="bg-muted">
+                  <span className="flex items-center gap-2">
+                    Bantuan
+                    {unreadAnswersCount > 0 && (
+                      <Badge variant="destructive" className="h-5 min-w-5 flex items-center justify-center text-xs px-1">
+                        {unreadAnswersCount}
+                      </Badge>
+                    )}
+                  </span>
                 </NavLink>
               )}
               {profile?.peran === "admin" && (

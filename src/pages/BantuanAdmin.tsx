@@ -331,7 +331,10 @@ const BantuanAdmin = () => {
               Batal
             </Button>
             <Button onClick={handleSubmitAnswer} disabled={submitting}>
-              {submitting ? "Mengirim..." : "Kirim Jawaban"}
+              {submitting 
+                ? (selectedQuestion?.jawaban ? "Menyimpan..." : "Mengirim...") 
+                : (selectedQuestion?.jawaban ? "Edit Jawaban" : "Kirim Jawaban")
+              }
             </Button>
           </DialogFooter>
         </DialogContent>
