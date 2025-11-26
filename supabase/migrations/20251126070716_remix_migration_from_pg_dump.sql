@@ -1,4 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS "pg_graphql";
+CREATE EXTENSION IF NOT EXISTS "pg_net";
 CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "plpgsql";
@@ -95,6 +96,21 @@ CREATE TYPE public.source_type AS ENUM (
 
 
 --
+-- Name: get_user_display_name(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.get_user_display_name(user_id uuid) RETURNS text
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+  SELECT COALESCE(nama_lengkap, 'Unknown') 
+  FROM profil 
+  WHERE id = user_id
+  LIMIT 1
+$$;
+
+
+--
 -- Name: handle_new_user(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -141,6 +157,75 @@ CREATE FUNCTION public.is_admin() RETURNS boolean
   SELECT EXISTS (
     SELECT 1 FROM public.profil WHERE id = auth.uid() AND peran = 'admin'
   );
+$$;
+
+
+--
+-- Name: notify_admin_new_question(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_admin_new_question() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+DECLARE
+  v_nama_penanya text;
+  v_nama_proyek text;
+  v_supabase_url text;
+  v_service_role_key text;
+BEGIN
+  -- Get Supabase configuration from vault or use defaults
+  SELECT decrypted_secret INTO v_supabase_url 
+  FROM vault.decrypted_secrets 
+  WHERE name = 'SUPABASE_URL' 
+  LIMIT 1;
+  
+  SELECT decrypted_secret INTO v_service_role_key 
+  FROM vault.decrypted_secrets 
+  WHERE name = 'SUPABASE_SERVICE_ROLE_KEY' 
+  LIMIT 1;
+
+  -- Fallback to environment if not in vault
+  IF v_supabase_url IS NULL THEN
+    v_supabase_url := current_setting('app.settings.supabase_url', true);
+  END IF;
+  
+  IF v_service_role_key IS NULL THEN
+    v_service_role_key := current_setting('app.settings.service_role_key', true);
+  END IF;
+
+  -- Get the question asker's name
+  SELECT COALESCE(nama_lengkap, 'Unknown') INTO v_nama_penanya
+  FROM profil
+  WHERE id = NEW.id_pengguna;
+
+  -- Get the project name
+  SELECT nama_proyek INTO v_nama_proyek
+  FROM proyek
+  WHERE id = NEW.id_proyek;
+
+  -- Call the edge function to send email notification using pg_net
+  PERFORM net.http_post(
+    url := v_supabase_url || '/functions/v1/notify-admin-new-question',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || v_service_role_key
+    ),
+    body := jsonb_build_object(
+      'question_id', NEW.id,
+      'judul_pertanyaan', NEW.judul_pertanyaan,
+      'isi_pertanyaan', NEW.isi_pertanyaan,
+      'nama_penanya', v_nama_penanya,
+      'nama_proyek', v_nama_proyek
+    )
+  );
+
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Log the error but don't prevent question creation
+  RAISE WARNING 'Failed to send admin notification: %', SQLERRM;
+  RETURN NEW;
+END;
 $$;
 
 
@@ -360,6 +445,17 @@ CREATE TABLE public.target_kpi (
 
 
 --
+-- Name: user_display_info; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.user_display_info AS
+ SELECT id,
+    nama_lengkap,
+    created_at
+   FROM public.profil;
+
+
+--
 -- Name: kampanye campaigns_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -520,6 +616,13 @@ CREATE INDEX idx_posts_posted_at ON public.postingan USING btree (waktu_dipostin
 --
 
 CREATE INDEX idx_posts_project_dataset ON public.postingan USING btree (id_proyek, id_dataset);
+
+
+--
+-- Name: pertanyaan trigger_notify_admin_new_question; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trigger_notify_admin_new_question AFTER INSERT ON public.pertanyaan FOR EACH ROW WHEN ((new.status = 'menunggu'::text)) EXECUTE FUNCTION public.notify_admin_new_question();
 
 
 --
@@ -878,10 +981,12 @@ CREATE POLICY "Users can rate answered questions" ON public.pertanyaan FOR UPDAT
 
 
 --
--- Name: profil Users can update own profile; Type: POLICY; Schema: public; Owner: -
+-- Name: profil Users can update own profile but not role; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Users can update own profile" ON public.profil FOR UPDATE USING ((auth.uid() = id));
+CREATE POLICY "Users can update own profile but not role" ON public.profil FOR UPDATE USING ((auth.uid() = id)) WITH CHECK (((auth.uid() = id) AND (peran = ( SELECT profil_1.peran
+   FROM public.profil profil_1
+  WHERE (profil_1.id = auth.uid())))));
 
 
 --
