@@ -157,16 +157,42 @@ const Bantuan = () => {
         if (profileError) throw profileError;
       }
 
-      // Insert question
-      const { error } = await supabase.from("pertanyaan").insert({
-        id_pengguna: user?.id,
-        id_proyek: selectedProject.id,
-        judul_pertanyaan: judul,
-        isi_pertanyaan: pertanyaan,
-        status: "menunggu",
-      });
+      // Insert question and get the created record
+      const { data: insertedQuestion, error } = await supabase
+        .from("pertanyaan")
+        .insert({
+          id_pengguna: user?.id,
+          id_proyek: selectedProject.id,
+          judul_pertanyaan: judul,
+          isi_pertanyaan: pertanyaan,
+          status: "menunggu",
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
+
+      // Trigger admin notification email (non-blocking for user)
+      if (insertedQuestion?.id) {
+        supabase.functions
+          .invoke("notify-admin-new-question", {
+            body: {
+              question_id: insertedQuestion.id,
+              judul_pertanyaan: judul.trim(),
+              isi_pertanyaan: pertanyaan.trim(),
+              nama_penanya: nama.trim(),
+              nama_proyek: selectedProject.nama_proyek,
+            },
+          })
+          .then(({ error }) => {
+            if (error) {
+              console.error("Error sending admin notification:", error);
+            }
+          })
+          .catch((fnError) => {
+            console.error("Error invoking notify-admin-new-question:", fnError);
+          });
+      }
 
       toast.success("Pertanyaan berhasil dikirim");
       setJudul("");
