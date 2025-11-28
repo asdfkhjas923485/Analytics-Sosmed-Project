@@ -1,7 +1,8 @@
-project_id = "kmnhohitclftvoyvnapj"
+project_id = "kpxytgpjcwkgveuoxqai"
 
 [functions.notify-admin-new-question]
 verify_jwt = false
 
 [functions.generate-caption]
 verify_jwt = false
+
